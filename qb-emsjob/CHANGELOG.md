@@ -15,7 +15,9 @@ Notable changes to qb-emsjob. Versions follow semantic versioning.
 - Society credits on instant billing pick the running money system at
   runtime: qbx_management -> Renewed-Banking -> legacy qb-management event.
 - Garage vehicle picker uses ox_lib's inputDialog when qb-input is absent
-  (Qbox), keeping qb-input preferred on QBCore.
+  (Qbox), keeping qb-input preferred on QBCore. The ox_lib module is resolved
+  via require when the `lib` global is absent, and results are read
+  positionally as ox_lib returns them.
 
 ## [1.4.0] - 2026-09-25
 
