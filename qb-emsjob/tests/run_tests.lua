@@ -1173,6 +1173,7 @@ test('society credit: prefers qbx_management when it is started', function()
     setup()
     Config.BillingMode = 'instant'
     Config.Insurance.enabled = false
+    stub.players[2].PlayerData.money.bank = 5000 -- fund the patient fully
     stub.started['qbx_management'] = true
 
     local billed = EMSBill(2, 2500, 'qbox society')
