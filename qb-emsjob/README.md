@@ -1,0 +1,94 @@
+# qb-emsjob
+
+A complete, self-contained **EMS / Paramedic job** for **QBCore** on FiveM.
+
+## Features
+
+- 🚑 **Multi-hospital coverage** — Central Los Santos, Sandy Shores and Paleto Bay, all configurable
+- 🚁 **EMS helicopters** — helipads with `policemav` / `annihilator2` (EMS-only blips, any count of vehicles per pad)
+- 🚑 **Per-location garages** — each hospital has its own duty point, garage, and vehicle list
+- 🩺 **Revive downed players** — grade-locked, consumes an `ifaks` item, billed to the patient
+- 💉 **Heal players** — consumes a `bandage`, per-patient cooldown, billed to the patient
+- 🫀 **Last stand / bleed-out** — downed timer (default 300s), hold **E** to self-respawn at the hospital
+- 🩺 **NUI duty menu** — status presets (10-8 / 10-7 / 10-23), call-sign field, live on-duty roster
+- 🏥 **Nearest-hospital respawn** — bleeding out sends you to the closest configured hospital
+- 🩺 **Checkup shows insurance** — EMS see whether the patient is insured during a vitals check
+- 🚨 **EMS alerts** — on-duty EMS get a notification + flashing GPS blip when someone goes down
+- 🧾 **Contestable billing** — qb-phone invoices patients can pay or contest, or legacy instant charges (`Config.BillingMode`)
+- 🪪 **Optional insurance** — insured patients get a discount or full coverage (`player_insurance` table)
+- 🌍 **Locales** — English & Spanish (`set qb_locale es`)
+- 🔒 **Server-side validation** — job/grade/distance/item checks on every action
+- ✅ Works with or without `qb-target` / `PolyZone` (set `Config.UseTarget = false` for 3D text)
+
+## Testing
+
+[![CI](https://github.com/YOUR_GITHUB_USERNAME/qb-emsjob/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/qb-emsjob/actions/workflows/ci.yml) <!-- replace YOUR_GITHUB_USERNAME with your GitHub org/user -->
+
+The server-side validation and billing logic ships with a unit-test harness that runs under **plain Lua 5.4** — no FiveM server required:
+
+```bash
+lua tests/run_tests.lua
+```
+
+`tests/fivem_stubs.lua` stubs the FiveM environment (event registry with the magic `source`, QBCore player objects, oxmysql backed by an in-memory DB, vector3 arithmetic, ped coords/health natives), then the runner loads the **real** `config.lua`, `locale.lua`, `server/main.lua`, `server/billing.lua` and `server/revive.lua` and exercises them:
+
+- job / duty / grade validation (`IsOnDutyEMS`)
+- distance anti-cheat (near/far/self revives, item consumption, malformed-target guards)
+- instant vs invoice billing, bank/cash drain behavior, society-credit failure handling
+- insurance: expiry, 50% discount, full coverage
+- respawn fee billing: charged, skipped when the fee is 0, insurance-covered announcement
+- heal cooldown, garage callback, duty toggle, invoice-contest hook
+- **EMS alert relay** — on-duty-only fan-out, victim excluded, garbage-coordinate rejection, config kill-switch
+- **duty roster sync** — call-sign validation/truncation/uppercase, invalid status rejection, non-EMS rejection, disconnect cleanup
+- **useable items** — registration only for existing shared items, event fires only when the player holds the item
+- **duty menu controller (client)** — NUI open/close gating, statebag persistence of status + call-sign, save validation (unknown statuses, illegal call-signs, uppercase/truncation), live roster pushes, duty-state sync and resource-stop cleanup (via the statebag + NUI stubs)
+
+Tests exit non-zero on failure, so they drop straight into CI.
+
+## Dependencies
+
+| Resource | Required |
+|---|---|
+| [qb-core](https://github.com/qbcore-framework/qb-core) | ✅ |
+| [oxmysql](https://github.com/overextended/oxmysql) | ✅ |
+| [qb-target](https://github.com/qbcore-framework/qb-target) | optional (when `Config.UseTarget = true`) |
+| [PolyZone](https://github.com/qbcore-framework/PolyZone) | optional (same as above) |
+
+## Installation
+
+1. Drop the `qb-emsjob` folder into your `resources/[qb]` directory.
+2. Run `install/ems_job.sql` on your database (adds the `ambulance` job + grades). For invoice billing + insurance, also run `install/ems_billing.sql`.
+3. (Optional insurance) give players insurance rows in `player_insurance`, e.g. via the example in `install/ems_billing.sql`.
+4. Make sure you have `bandage` and `ifaks` items in `qb-core/shared/items.lua` (most servers ship with them; otherwise add them).
+5. Add to your `server.cfg`:
+
+   ```cfg
+   ensure qb-emsjob
+   ```
+
+6. Optional: set the language with `set qb_locale en` (or `es`).
+
+> **Invoice mode:** set `Config.BillingMode = 'invoices'` (default) to send qb-phone invoices patients can pay or contest, or `'instant'` for legacy immediate charges. Insurance rules live under `Config.Insurance`.
+
+## Usage
+
+- **Duty:** go to the front-desk point at any hospital (Central, Sandy Shores, Paleto Bay) and use **Open Duty Menu** — pick a status (10-8/10-7/10-23), set your call-sign, then **Save & Apply**. Toggle duty from the same menu.
+- **Garage:** grab an ambulance at any hospital bay, or a helicopter from an enabled helipad; park it back and use **Store Ambulance**.
+- **Revive/Heal:** walk up to a player (downed for revive, injured for heal) and use the qb-target options.
+- **Items:** use `bandage` / `ifaks` from your inventory for a small self-heal.
+- **Death:** after bleeding out or holding **E** for 3s, you respawn at the hospital.
+
+## Configuration
+
+Everything lives in `config.lua` — job name, grade requirements, prices, cooldowns, items, blips, last-stand timings, and the `Config.Hospitals` table. Each hospital entry defines its `duty` point, `garage` (interact spot, spawn, vehicle list), optional `helipad` (set `enabled = true/false`), and `respawn`/`beds` coordinates. Add or remove hospital entries to shape coverage; garages and helipads follow automatically.
+
+## Events (for other resources)
+
+```lua
+-- Client exports
+exports['qb-emsjob']:IsEMS()      -- bool: is the player EMS?
+exports['qb-emsjob']:IsOnDuty()   -- bool: is EMS on duty?
+
+-- Force-revive a player from another script (e.g. admin menu)
+TriggerClientEvent('qb-emsjob:client:Revived', targetSrc, 0)
+```

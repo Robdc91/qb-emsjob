@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EMS Duty Menu</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div id="app" class="hidden">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-left">
+                    <i class="fas fa-truck-medical"></i>
+                    <span>EMS DUTY</span>
+                </div>
+                <button id="close-btn" class="close-btn"><i class="fas fa-xmark"></i></button>
+            </div>
+
+            <!-- My status -->
+            <div class="section">
+                <div class="section-title">My Status</div>
+                <div class="callsign-row">
+                    <label for="callsign-input">Call-sign</label>
+                    <input id="callsign-input" type="text" maxlength="8" placeholder="e.g. M-24" autocomplete="off">
+                </div>
+                <div class="status-grid">
+                    <button class="status-btn" data-status="available">10-8</button>
+                    <button class="status-btn" data-status="busy">10-7</button>
+                    <button class="status-btn" data-status="outofservice">10-23</button>
+                    <button class="status-btn" data-status="duty-toggle">Duty</button>
+                    <button class="status-btn wide" data-status="save">Save &amp; Apply</button>
+        </div>
+            </div>
+
+            <!-- On-duty colleagues -->
+            <div class="section">
+                <div class="section-title">On-Duty <span id="roster-count" class="count">0</span></div>
+                <div id="roster-list" class="roster">
+                    <div class="empty">No colleagues on duty.</div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-hint"><kbd>ESC</kbd> to close</div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+:root {
+    --bg: #14171f;
+    --panel: #1c2029;
+    --panel-2: #232834;
+    --line: #2e3440;
+    --text: #e8eaf0;
+    --muted: #8b93a7;
+    --accent: #26b57f;
+    --accent-dim: #1f9668;
+    --red: #e05252;
+    --amber: #e0a752;
+    --gray: #6b7280;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    background: transparent;
+    overflow: hidden;
+    user-select: none;
+}
+
+.hidden { display: none !important; }
+
+#app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.container {
+    width: 420px;
+    max-height: 640px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+}
+
+.close-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.close-btn:hover { background: var(--red); color: #fff; }
+
+/* Sections */
+.section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.section:last-of-type { border-bottom: none; }
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.count {
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #0c1210;
+    font-size: 11px;
+}
+
+/* Callsign */
+.callsign-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.callsign-row label {
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 60px;
+}
+
+#callsign-input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    text-transform: uppercase;
+}
+
+#callsign-input:focus { border-color: var(--accent); }
+
+/* Status buttons */
+.status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+}
+
+.status-btn {
+    padding: 9px 6px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.status-btn:hover { border-color: var(--accent); }
+
+.status-btn.selected.available,
+.status-btn[data-status="available"].selected { background: var(--accent); border-color: var(--accent); color: #0c1210; }
+
+.status-btn[data-status="busy"].selected { background: var(--amber); border-color: var(--amber); color: #241a05; }
+
+.status-btn[data-status="outofservice"].selected { background: var(--red); border-color: var(--red); color: #fff; }
+
+.status-btn.wide { grid-column: 1 / -1; }
+
+.status-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0c1210;
+}
+
+.status-btn.primary:hover { background: var(--accent-dim); }
+
+/* Roster */
+.roster {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.roster::-webkit-scrollbar { width: 4px; }
+.roster::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
+.roster-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+}
+
+.roster-item.self { border-color: var(--accent); }
+
+.roster-callsign {
+    min-width: 46px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: var(--panel-2);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.roster-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.roster-status {
+    padding: 3px 9px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.roster-status.available { background: rgba(38, 181, 127, 0.18); color: var(--accent); }
+.roster-status.busy { background: rgba(224, 167, 82, 0.18); color: var(--amber); }
+.roster-status.outofservice { background: rgba(107, 114, 128, 0.25); color: var(--gray); }
+.roster-status.offduty { background: rgba(224, 82, 82, 0.15); color: var(--red); }
+
+.empty {
+    padding: 14px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+}
+
+/* Footer */
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+}
+
+.footer-hint { font-size: 11px; color: var(--muted); }
+
+kbd {
+    padding: 2px 6px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--panel-2);
+    font-size: 10px;
+    font-family: inherit;
+}
