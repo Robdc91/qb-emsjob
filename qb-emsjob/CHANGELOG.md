@@ -10,7 +10,8 @@ Notable changes to qb-emsjob. Versions follow semantic versioning.
   qb-target preferred), item existence checks prefer ox_inventory when it is
   running, and the cosmetic `inventory:client:ItemBox` call is guarded for
   stacks where QBCore.Shared.Items does not hold the item. qb-target/PolyZone
-  are no longer hard manifest dependencies.
+  are no longer hard manifest dependencies. Qbox job setup is documented in
+  `install/qbox_jobs.lua` (qbx_core defines jobs in Lua, not SQL).
 
 ## [1.3.4] - 2026-09-25
 

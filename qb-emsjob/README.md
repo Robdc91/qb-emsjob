@@ -65,7 +65,7 @@ Open `html/dev-harness.html` in a browser to click through the duty menu outside
 ## Installation
 
 1. Drop the `qb-emsjob` folder into your `resources/[qb]` directory.
-2. Run `install/ems_job.sql` on your database (adds the `ambulance` job + grades). For invoice billing + insurance, also run `install/ems_billing.sql`.
+2. Run `install/ems_job.sql` on your database (adds the `ambulance` job + grades). For invoice billing + insurance, also run `install/ems_billing.sql`. *(Qbox: skip `ems_job.sql` — see `install/qbox_jobs.lua` instead.)*
 3. (Optional insurance) give players insurance rows in `player_insurance`, e.g. via the example in `install/ems_billing.sql`.
 4. Make sure you have `bandage` and `ifaks` items in `qb-core/shared/items.lua` (QBCore) or in ox_inventory (Qbox; items added to `qbx_core/shared/items.lua` are auto-synced to ox_inventory).
 5. Add to your `server.cfg`:
@@ -78,7 +78,7 @@ Open `html/dev-harness.html` in a browser to click through the duty menu outside
 
 > **Invoice mode:** set `Config.BillingMode = 'invoices'` (default) to send qb-phone invoices patients can pay or contest, or `'instant'` for legacy immediate charges. Insurance rules live under `Config.Insurance`.
 >
-> **Qbox:** no extra setup — with the QB bridge enabled (default), the resource uses qbx_core's `qb-core` compatibility layer, routes interaction points to ox_target, and looks items up in ox_inventory. Job grades in `install/ems_job.sql` use QBCore's string form; Qbox needs numeric grade names, so adjust `qbx_core/shared/jobs.lua` instead of running that SQL.
+> **Qbox:** no extra setup — with the QB bridge enabled (default), the resource uses qbx_core's `qb-core` compatibility layer, routes interaction points to ox_target, and looks items up in ox_inventory. Do **not** run `install/ems_job.sql`: Qbox defines jobs in Lua, and its stock `ambulance` job already works (qb-emsjob checks grade *levels* only). To mirror the QBCore salary ladder instead, see `install/qbox_jobs.lua`.
 
 ## Usage
 
