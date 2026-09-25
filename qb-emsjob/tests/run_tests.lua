@@ -9,6 +9,7 @@
       - duty roster sync (server/duty_menu.lua)
       - useable item registration (server/items.lua), incl. ox_inventory fallback
       - target bridge (client/target_bridge.lua): qb-target vs ox_target (Qbox)
+      - FRAMEWORKS.md detection-order table stays in sync with the real code
       - duty menu NUI controller (client/duty_menu.lua) via statebag + NUI stubs
       - garage controller (client/garage.lua) via qb-target + vehicle stubs
       - revive/laststand controller (client/revive.lua) with fake-time thread stepping
@@ -1532,6 +1533,173 @@ test('revive: bandage heals, starts a cooldown and is refused while downed', fun
     -- second use inside the cooldown window is rejected
     stub.runInThread(function() stub.fireEvent('qb-emsjob:client:UseBandage', 1) end)
     isTrue(stub.notifyLog[#stub.notifyLog].msg:find('recently treated', 1, true) ~= nil, 'cooldown notify')
+end)
+
+ ---------------------------------------------------------------------------
+ -- Documentation accuracy: FRAMEWORKS.md detection order vs the real code
+ ---------------------------------------------------------------------------
+
+--- The framework reference doc (FRAMEWORKS.md) claims specific detection
+--- orders for every optional resource. These tests parse the doc's
+--- detection-order table and assert each priority chain against the
+--- resource source, so the two can never drift apart silently: editing one
+--- without the other fails CI. Doc rows are parsed (not hard-coded) and
+--- source checks are plain substring finds, so pure prose edits stay free.
+
+local frameworksDoc
+local sourceOf = {}
+do
+    local f = io.open('FRAMEWORKS.md', 'r')
+    isTrue(f ~= nil, 'FRAMEWORKS.md is readable (run lua from the qb-emsjob directory)')
+    frameworksDoc = f:read('*a')
+    f:close()
+
+    for key, path in pairs({
+        bridge = 'bridge.lua',
+        targets = 'client/target_bridge.lua',
+        items = 'server/items.lua',
+        billing = 'server/billing.lua',
+        garage = 'client/garage.lua',
+        manifest = 'fxmanifest.lua',
+    }) do
+        local sf = io.open(path, 'r')
+        isTrue(sf ~= nil, path .. ' is readable')
+        sourceOf[key] = sf:read('*a')
+        sf:close()
+    end
+end
+
+--- One trimmed cell list from a markdown table row (name + data columns).
+local function splitRow(line)
+    local cells = {}
+    for cell in line:gmatch('[^|]+') do
+        cells[#cells + 1] = cell:match('^%s*(.-)%s*$')
+    end
+    return cells
+end
+
+--- Parse one row of the "## Detection order" table by integration point.
+local function detectionRow(integrationPoint)
+    local row = nil
+    for line in frameworksDoc:gmatch('[^\r\n]+') do
+        if line:sub(1, 1) == '|' then
+            local cells = splitRow(line)
+            if cells[1] == integrationPoint and #cells >= 5 then
+                row = {
+                    priority = cells[2],
+                    qbcore = cells[3],
+                    qbox = cells[4],
+                    neither = cells[5],
+                }
+            end
+        end
+    end
+    return row
+end
+
+--- Plain (non-pattern) substring find against a loaded source file.
+local function sourceHas(key, snippet)
+    return sourceOf[key]:find(snippet, 1, true) ~= nil
+end
+
+test('FRAMEWORKS: detection-order table lists all six integration points', function()
+    for _, name in ipairs({
+        'Core object', 'Interaction targets', 'Item existence', 'Invoices',
+        'Society credit (instant billing)', 'Garage vehicle picker',
+    }) do
+        isTrue(detectionRow(name) ~= nil, 'row present: ' .. name)
+    end
+end)
+
+test('FRAMEWORKS: targets row matches target_bridge (qb-target before ox_target)', function()
+    local row = detectionRow('Interaction targets')
+    isTrue(row.priority:find('qb-target', 1, true) ~= nil, 'doc names qb-target')
+    isTrue(row.priority:find('ox_target', 1, true) ~= nil, 'doc names ox_target')
+    isTrue(row.priority:find('qb-target', 1, true) < row.priority:find('ox_target', 1, true), 'doc order: qb-target first')
+    isTrue(sourceHas('targets', "Bridge.IsStarted('qb-target')"), 'code checks qb-target')
+    isTrue(sourceHas('targets', "Bridge.IsStarted('ox_target')"), 'code checks ox_target')
+    isTrue(sourceOf.targets:find("Bridge.IsStarted('qb-target')", 1, true) <
+        sourceOf.targets:find("Bridge.IsStarted('ox_target')", 1, true), 'code order: qb-target first')
+    isTrue(sourceHas('targets', 'interaction points are disabled'), 'warns once when neither is started')
+end)
+
+test('FRAMEWORKS: item row matches items.lua (ox_inventory preferred over Shared.Items)', function()
+    local row = detectionRow('Item existence')
+    isTrue(row.priority:find('ox_inventory', 1, true) ~= nil, 'doc names ox_inventory')
+    isTrue(row.priority:find('Shared.Items', 1, true) ~= nil, 'doc names Shared.Items')
+    isTrue(row.priority:find('ox_inventory', 1, true) < row.priority:find('Shared.Items', 1, true), 'doc order: ox_inventory first')
+    isTrue(sourceHas('items', "Bridge.IsStarted('ox_inventory')"), 'code checks ox_inventory')
+    isTrue(sourceHas('items', 'QBCore.Shared.Items and QBCore.Shared.Items[item] ~= nil'), 'fallback guards Shared.Items')
+end)
+
+test('FRAMEWORKS: invoice row matches billing.lua (qb-phone event, then direct row)', function()
+    local row = detectionRow('Invoices')
+    isTrue(row.priority:find('qb-phone event', 1, true) ~= nil, 'doc: qb-phone event first')
+    isTrue(row.priority:find('direct DB row', 1, true) ~= nil, 'doc: direct DB row second')
+    isTrue(row.qbcore:find('qb-phone:server:sendInvoice', 1, true) ~= nil, 'doc names the event')
+    isTrue(row.qbox:find('phone_invoices', 1, true) ~= nil, 'doc names the direct table')
+    isTrue(sourceHas('billing', "Bridge.IsStarted('qb-phone')"), 'code checks qb-phone first')
+    isTrue(sourceHas('billing', "TriggerEvent('qb-phone:server:sendInvoice'"), 'code fires the event')
+    isTrue(sourceHas('billing', 'INSERT INTO phone_invoices'), 'code inserts the row as fallback')
+    isTrue(sourceHas('billing', 'sendercitizenid'), 'row columns match the qbx_phone schema')
+end)
+
+test('FRAMEWORKS: society row matches billing.lua (qbx -> Renewed -> legacy event)', function()
+    local row = detectionRow('Society credit (instant billing)')
+    isTrue(row.priority:find('qbx_management', 1, true) ~= nil, 'doc names qbx_management')
+    isTrue(row.priority:find('Renewed-Banking', 1, true) ~= nil, 'doc names Renewed-Banking')
+    isTrue(row.priority:find('legacy event', 1, true) ~= nil, 'doc names the legacy event')
+    isTrue(row.priority:find('qbx_management', 1, true) < row.priority:find('Renewed-Banking', 1, true), 'doc order: qbx first')
+    isTrue(row.priority:find('Renewed-Banking', 1, true) < row.priority:find('legacy event', 1, true), 'doc order: Renewed second')
+    isTrue(sourceHas('billing', "Bridge.IsStarted('qbx_management')"), 'code checks qbx_management')
+    isTrue(sourceHas('billing', "Bridge.IsStarted('Renewed-Banking')"), 'code checks Renewed-Banking')
+    isTrue(sourceHas('billing', "TriggerEvent('qb-management:server:addSocietyMoney'"), 'code ends at the legacy event')
+    isTrue(sourceOf.billing:find("Bridge.IsStarted('qbx_management')", 1, true) <
+        sourceOf.billing:find("Bridge.IsStarted('Renewed-Banking')", 1, true), 'code order: qbx first')
+    isTrue(sourceOf.billing:find("Bridge.IsStarted('Renewed-Banking')", 1, true) <
+        sourceOf.billing:find("TriggerEvent('qb-management:server:addSocietyMoney'", 1, true), 'code order: Renewed before legacy')
+end)
+
+test('FRAMEWORKS: picker row matches garage.lua (qb-input, ox_lib, first vehicle)', function()
+    local row = detectionRow('Garage vehicle picker')
+    isTrue(row.priority:find('qb-input', 1, true) ~= nil, 'doc names qb-input')
+    isTrue(row.priority:find('ox_lib dialog', 1, true) ~= nil, 'doc names the ox_lib dialog')
+    isTrue(row.priority:find('first vehicle', 1, true) ~= nil, 'doc names the first-vehicle fallback')
+    isTrue(row.priority:find('qb-input', 1, true) < row.priority:find('ox_lib dialog', 1, true), 'doc order: qb-input first')
+    isTrue(sourceHas('garage', "Bridge.IsStarted('qb-input')"), 'code checks qb-input')
+    isTrue(sourceHas('garage', 'Bridge.GetOxLib()'), 'code resolves ox_lib through the shared bridge')
+    isTrue(sourceHas('garage', 'model = cfg.vehicles[1]'), 'first vehicle is the code fallback')
+    isTrue(sourceHas('garage', 'res[1] or res.vehicle'), 'ox_lib result read positionally with a fork fallback')
+end)
+
+test('FRAMEWORKS: core row matches the manifest hard dependencies', function()
+    local row = detectionRow('Core object')
+    isTrue(row.qbcore:find('qb-core', 1, true) ~= nil, 'doc: qb-core on classic QBCore')
+    isTrue(row.qbox:find('GetCoreObject', 1, true) ~= nil, 'doc: QB bridge answers GetCoreObject')
+    isTrue(sourceHas('manifest', "'qb-core',"), 'qb-core is a hard dependency')
+    isTrue(sourceHas('manifest', "'oxmysql',"), 'oxmysql is a hard dependency')
+    isTrue(sourceHas('manifest', "'bridge.lua',"), 'bridge.lua ships as a shared script')
+    isTrue(not sourceHas('manifest', "'qb-target',"), 'qb-target is optional, not a dependency')
+    isTrue(not sourceHas('manifest', "'PolyZone'"), 'PolyZone is optional, not a dependency')
+end)
+
+test('FRAMEWORKS: neither-resource columns match the actual fallbacks', function()
+    isTrue(detectionRow('Interaction targets').neither:find('warn once', 1, true) ~= nil, 'doc: targets warn once')
+    isTrue(detectionRow('Item existence').neither:find('falls back to shared items', 1, true) ~= nil, 'doc: items fall back')
+    isTrue(detectionRow('Invoices').neither:find('direct DB row', 1, true) ~= nil, 'doc: invoices still land')
+    isTrue(detectionRow('Society credit (instant billing)').neither:find('credit skipped', 1, true) ~= nil, 'doc: credit skipped')
+    isTrue(detectionRow('Garage vehicle picker').neither:find('first configured vehicle', 1, true) ~= nil, 'doc: first vehicle')
+end)
+
+test('FRAMEWORKS: bridging-lives table matches the bridge.lua surface', function()
+    isTrue(frameworksDoc:find('Bridge.IsStarted', 1, true) ~= nil, 'doc references Bridge.IsStarted')
+    isTrue(frameworksDoc:find('Bridge.GetOxLib', 1, true) ~= nil, 'doc references Bridge.GetOxLib')
+    isTrue(frameworksDoc:find('Bridge.ResetCaches', 1, true) ~= nil, 'doc references Bridge.ResetCaches')
+    isTrue(sourceHas('bridge', 'function Bridge.IsStarted'), 'code defines Bridge.IsStarted')
+    isTrue(sourceHas('bridge', 'function Bridge.GetOxLib'), 'code defines Bridge.GetOxLib')
+    isTrue(sourceHas('bridge', 'function Bridge.ResetCaches'), 'code defines Bridge.ResetCaches')
+    isTrue(frameworksDoc:find("require('@ox_lib/init.lua')", 1, true) ~= nil, 'doc documents the require fallback')
+    isTrue(sourceHas('bridge', "pcall(require, '@ox_lib/init.lua')"), 'code implements it')
 end)
 
  ---------------------------------------------------------------------------
