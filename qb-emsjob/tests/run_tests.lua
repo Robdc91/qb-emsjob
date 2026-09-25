@@ -509,11 +509,15 @@ end)
  -- Duty toggle
  ---------------------------------------------------------------------------
 
-test('duty toggle flips onduty for EMS', function()
+test('duty toggle flips onduty for EMS and rebroadcasts the roster', function()
     setup()
     stub.players[1].PlayerData.job.onduty = false
     stub.fireEvent('qb-emsjob:server:ToggleDuty', 1)
     eq(stub.players[1].PlayerData.job.onduty, true)
+
+    -- the roster must refresh so the duty menu shows the new duty state
+    eq(eventsTo('qb-emsjob:client:RosterUpdated', 1), 1)
+    eq(lastRosterFor(1)[1].onDuty, true)
 end)
 
  ---------------------------------------------------------------------------

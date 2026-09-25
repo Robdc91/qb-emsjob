@@ -23,8 +23,10 @@ shared_scripts {
 }
 
 client_scripts {
-    '@PolyZone/client.lua',
-    '@qb-target/init.lua',
+    -- NOTE: no @-includes for qb-target/PolyZone here. The @ syntax would
+    -- execute their code a second time inside this resource; the exports
+    -- (exports['qb-target']) work as long as qb-target is started first,
+    -- which the dependencies block below enforces.
     'client/main.lua',
     'client/duty_menu.lua',
     'client/revive.lua',

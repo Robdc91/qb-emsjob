@@ -280,7 +280,6 @@ AddEventHandler('onResourceStop', function(res)
     end
 end)
 
-AddEventHandler('playerDropped', function()
-    isLoggedIn = false
-    OnDuty = false
-end)
+-- NOTE: there is deliberately no client 'playerDropped' handler here -
+-- that event only exists server-side. Local cleanup happens in
+-- QBCore:Client:OnPlayerUnload above.

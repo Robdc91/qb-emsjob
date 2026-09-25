@@ -49,6 +49,11 @@ RegisterNetEvent('qb-emsjob:server:ToggleDuty', function()
     end
 
     Player.Functions.SetJobDuty(not job.onduty)
+
+    -- Duty state changed: push a fresh roster so the duty menu does not
+    -- show stale on-duty flags. BroadcastDutyRoster is a global defined in
+    -- server/duty_menu.lua (later in the load order; safe at event time).
+    if BroadcastDutyRoster then BroadcastDutyRoster() end
 end)
 
  ---------------------------------------------------------------------------
