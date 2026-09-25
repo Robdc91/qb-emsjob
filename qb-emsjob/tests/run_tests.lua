@@ -76,6 +76,16 @@ dofile('client/duty_menu.lua')
 
 local V = stub.vector3
 
+--- duty_menu.lua keeps a module-local EMSRoster; fire drop events so leftover
+--- entries from earlier tests are cleared before stub.reset().
+--- (Defined BEFORE setup(): a local declared after setup would leave setup
+--- resolving clearRoster as a nil global at runtime.)
+local function clearRoster()
+    for src = 1, 5 do
+        stub.fireEvent('playerDropped', src)
+    end
+end
+
 --- Default scenario: medic(1) on duty grade 3 with items, patient(2) civilian.
 local function setup()
     clearRoster()
@@ -139,14 +149,6 @@ local function lastRosterFor(target)
         end
     end
     return roster
-end
-
---- duty_menu.lua keeps a module-local EMSRoster; fire drop events so leftover
---- entries from earlier tests are cleared before stub.reset().
-local function clearRoster()
-    for src = 1, 5 do
-        stub.fireEvent('playerDropped', src)
-    end
 end
 
  ---------------------------------------------------------------------------

@@ -20,7 +20,7 @@ jobs:
       - name: Install Lua ${{ matrix.lua-version }}
         uses: leafo/gh-actions-lua@v10
         with:
-          lua-version: ${{ matrix.lua-version }}
+          luaVersion: ${{ matrix.lua-version }}
 
       - name: Run test suite
         working-directory: qb-emsjob
