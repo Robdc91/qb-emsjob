@@ -50,17 +50,7 @@ local function takeOut(hospital, kind)
                 return opts
             end
 
-            --- Resolve the ox_lib module: the `lib` global only exists in this
-            --- resource when its init.lua was imported, so fall back to a
-            --- cross-resource require (FiveM lua54). nil = no usable ox_lib.
-            local function getLib()
-                if type(lib) == 'table' then return lib end
-                local ok, mod = pcall(require, '@ox_lib/init.lua')
-                if ok and type(mod) == 'table' then return mod end
-                return nil
-            end
-
-            if GetResourceState('qb-input') == 'started' then
+            if Bridge.IsStarted('qb-input') then
                 local ok, input = pcall(function()
                     return exports['qb-input']:ShowInput({
                         header = hospital.label,
@@ -74,7 +64,7 @@ local function takeOut(hospital, kind)
                     model = input.vehicle
                 end
             else
-                local l = getLib()
+                local l = Bridge.GetOxLib()
                 if l and l.inputDialog then
                     local ok, picked = pcall(function()
                         local entries = {}

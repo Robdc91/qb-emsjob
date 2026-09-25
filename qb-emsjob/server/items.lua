@@ -11,7 +11,7 @@ local QBCore = exports['qb-core']:GetCoreObject()
 
 --- True when the item exists in the active inventory layer.
 local function itemExists(item)
-    if GetResourceState('ox_inventory') == 'started' then
+    if Bridge.IsStarted('ox_inventory') then
         return exports.ox_inventory:Items(item) ~= nil
     end
     return QBCore.Shared.Items and QBCore.Shared.Items[item] ~= nil

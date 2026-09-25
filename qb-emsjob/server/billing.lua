@@ -66,13 +66,13 @@ end
 ---   3. qb-management legacy event (classic QBCore)
 --- Returns true when a known system accepted the credit.
 local function bridgeSociety(amount)
-    if GetResourceState('qbx_management') == 'started' then
+    if Bridge.IsStarted('qbx_management') then
         local ok = pcall(function()
             exports.qbx_management:AddMoney(Config.SocietyAccount, amount)
         end)
         if ok then return true end
     end
-    if GetResourceState('Renewed-Banking') == 'started' then
+    if Bridge.IsStarted('Renewed-Banking') then
         local ok = pcall(function()
             exports['Renewed-Banking']:addAccountMoney(Config.SocietyAccount, amount)
         end)
@@ -131,7 +131,7 @@ local function sendInvoice(patientSource, amount, reason)
     local citizenid = Patient.PlayerData.citizenid
 
     -- Classic qb-phone implements the sendInvoice event; prefer it there.
-    if GetResourceState('qb-phone') == 'started' then
+    if Bridge.IsStarted('qb-phone') then
         -- qb-phone expects: target citizenid, sender citizenid, sender label,
         -- amount, (optional) society + invoice id
         local ok = pcall(function()

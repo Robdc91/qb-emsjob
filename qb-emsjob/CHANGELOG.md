@@ -2,6 +2,15 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.4.2] - 2026-09-25
+
+### Changed
+- New shared `bridge.lua` centralizes optional-resource detection
+  (`Bridge.IsStarted`) and ox_lib resolution (`Bridge.GetOxLib`, cached,
+  global-or-require fallback) for both VMs; target_bridge, items.lua,
+  billing.lua and the garage picker all use it instead of repeating
+  GetResourceState checks.
+
 ## [1.4.1] - 2026-09-25
 
 ### Fixed

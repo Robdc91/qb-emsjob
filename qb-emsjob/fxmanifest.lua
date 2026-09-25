@@ -5,7 +5,7 @@ lua54 'yes'
 name 'qb-emsjob'
 description 'EMS/Paramedic job for QBCore: revive & heal players, ambulance garage, duty points, first-aid items'
 author 'Buffy'
-version '1.4.1'
+version '1.4.2'
 
 ui_page 'html/index.html'
 
@@ -20,6 +20,7 @@ shared_scripts {
     'locales/en.lua',
     'locales/es.lua',
     'config.lua',
+    'bridge.lua', -- shared optional-resource detection (must load first)
 }
 
 client_scripts {

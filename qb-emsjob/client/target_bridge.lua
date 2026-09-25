@@ -13,6 +13,8 @@
       TargetRemoveZone(name)
       TargetAddEntity(ped, options)      -- options: qb-target shape
       TargetRemoveEntity(ped)
+
+    Detection goes through the shared bridge.lua (Bridge.IsStarted).
 ]]
 
 local oxZoneIds = {}   -- [name] = ox_target zone id
@@ -27,13 +29,14 @@ function TargetBridgeReset()
     backend = nil
     oxZoneIds = {}
     oxEntityIds = {}
+    Bridge.ResetCaches()
 end
 
 local function pickBackend()
     if backend == nil then
-        if GetResourceState('qb-target') == 'started' then
+        if Bridge.IsStarted('qb-target') then
             backend = 'qb'
-        elseif GetResourceState('ox_target') == 'started' then
+        elseif Bridge.IsStarted('ox_target') then
             backend = 'ox'
         else
             backend = false -- neither present; warn once, no-op below

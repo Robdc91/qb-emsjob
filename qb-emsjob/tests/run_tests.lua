@@ -50,6 +50,7 @@ end
 
 dofile('config.lua')
 dofile('locale.lua')
+dofile('bridge.lua') -- shared optional-resource detection (Bridge globals)
 dofile('locales/en.lua')
 dofile('server/main.lua')
 dofile('server/billing.lua')
@@ -114,6 +115,7 @@ local function setup()
     stub.started['qb-target'] = true
     stub.started['qb-phone'] = true -- classic qb-phone implements sendInvoice
     TargetBridgeReset()
+    Bridge.ResetCaches()
 
     -- Client scenario globals (client/main.lua): on-duty, logged-in medic.
     -- duty_menu.lua also keeps module-local menu state across tests, so
