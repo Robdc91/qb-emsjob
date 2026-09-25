@@ -22,7 +22,7 @@ A complete, self-contained **EMS / Paramedic job** for **QBCore** on FiveM.
 
 ## Testing
 
-[![CI](https://github.com/YOUR_GITHUB_USERNAME/qb-emsjob/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/qb-emsjob/actions/workflows/ci.yml) <!-- replace YOUR_GITHUB_USERNAME with your GitHub org/user -->
+[![CI](https://github.com/Robdc91/qb-emsjob/actions/workflows/ci.yml/badge.svg)](https://github.com/Robdc91/qb-emsjob/actions/workflows/ci.yml)
 
 The server-side validation and billing logic ships with a unit-test harness that runs under **plain Lua 5.4** — no FiveM server required:
 
