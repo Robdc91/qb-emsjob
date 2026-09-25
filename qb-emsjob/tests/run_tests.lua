@@ -9,6 +9,7 @@
       - duty roster sync (server/duty_menu.lua)
       - useable item registration (server/items.lua)
       - duty menu NUI controller (client/duty_menu.lua) via statebag + NUI stubs
+      - garage controller (client/garage.lua) via qb-target + vehicle stubs
 
     Run:  lua tests/run_tests.lua
 ]]
@@ -69,6 +70,7 @@ Config.UseTarget = false
 Config.EnableBlips = false
 dofile('client/main.lua')
 dofile('client/duty_menu.lua')
+dofile('client/garage.lua')
 
  ---------------------------------------------------------------------------
  -- Helpers
@@ -861,6 +863,145 @@ test('duty menu: resource stop releases NUI focus', function()
 
     stub.fireEvent('onResourceStop', 0, 'qb-emsjob')
     eq(stub.nuiFocus.focused, false)
+end)
+
+ ---------------------------------------------------------------------------
+ -- Garage controller (client/garage.lua)
+ ---------------------------------------------------------------------------
+
+--- Register the garage/duty zones as qb-target would on resource start.
+local function startGarage()
+    Config.UseTarget = true
+    stub.fireEvent('onResourceStart', 0, 'qb-emsjob')
+end
+
+--- Return the zone option action with the given label (nil if absent).
+local function zoneAction(name, label)
+    local zone = stub.zones[name]
+    if not zone then return nil end
+    for _, opt in ipairs(zone.options) do
+        if opt.label == label then return opt.action end
+    end
+    return nil
+end
+
+test('garage: hospital zones register with take-out and store actions', function()
+    setup()
+    startGarage()
+
+    isTrue(stub.zones['ems_garage_central'] ~= nil)
+    isTrue(stub.zones['ems_heli_central'] ~= nil)
+    isTrue(stub.zones['ems_garage_sandy'] ~= nil)
+    isTrue(stub.zones['ems_heli_paleto'] == nil) -- helipad disabled in config
+
+    isTrue(zoneAction('ems_garage_central', _L('target_garage')) ~= nil, 'take-out action')
+    isTrue(zoneAction('ems_garage_central', _L('target_store')) ~= nil, 'store action')
+end)
+
+test('garage: taking out an ambulance spawns, preps, keys and warps', function()
+    setup()
+    startGarage()
+
+    zoneAction('ems_garage_central', _L('target_garage'))()
+
+    eq(#stub.spawnLog, 1)
+    eq(stub.spawnLog[1].model, 'ambulance')
+    local veh = stub.spawnLog[1].veh
+    local v = stub.vehicles[veh]
+    eq(v.heading, 82.0)                       -- central garage spawn heading
+    isTrue(v.plate:find('EMS', 1, true) ~= nil, 'plate starts with EMS')
+    eq(v.engineOn, true)
+    eq(v.fuel, 100.0)
+    eq(v.livery, 1)                           -- ground vehicles get a livery
+    eq(stub.warped.veh, veh)
+    eq(stub.warped.seat, -1)
+    eq(eventCount('vehiclekeys:client:SetOwner'), 1)
+end)
+
+test('garage: spawn is refused with a notify when the spot is blocked', function()
+    setup()
+    startGarage()
+
+    local realCb = stub.callbacks['qb-emsjob:server:CanSpawnVehicle']
+    stub.callbacks['qb-emsjob:server:CanSpawnVehicle'] = function(_, cb) cb(false) end
+    zoneAction('ems_garage_central', _L('target_garage'))()
+    stub.callbacks['qb-emsjob:server:CanSpawnVehicle'] = realCb
+
+    eq(#stub.spawnLog, 0)
+    local note = stub.notifyLog[#stub.notifyLog]
+    isTrue(note ~= nil and note.msg:find('spawn point is blocked', 1, true) ~= nil, 'blocked notify')
+end)
+
+test('garage: helipad take out spawns a helicopter without a livery', function()
+    setup()
+    startGarage()
+
+    zoneAction('ems_heli_central', _L('target_heli'))()
+
+    eq(#stub.spawnLog, 1)
+    eq(stub.spawnLog[1].model, 'policemav')   -- first configured heli, qb-input absent
+    local v = stub.vehicles[stub.spawnLog[1].veh]
+    eq(v.livery, nil)                         -- helis get no livery
+    eq(stub.warped.veh, stub.spawnLog[1].veh)
+end)
+
+test('garage: storing an ambulance deletes it', function()
+    setup()
+    startGarage()
+    stub.vehicles[777] = { model = joaat('ambulance'), class = 0, plate = 'EMS999' }
+    stub.pedInVehicle = 777
+
+    zoneAction('ems_garage_central', _L('target_store'))()
+
+    eq(#stub.deletedVehicles, 1)
+    eq(stub.deletedVehicles[1], 777)
+    eq(stub.vehicles[777], nil)
+    isTrue(stub.notifyLog[#stub.notifyLog].msg:find('stored', 1, true) ~= nil, 'stored notify')
+end)
+
+test('garage: storing a civilian vehicle is refused', function()
+    setup()
+    startGarage()
+    stub.vehicles[888] = { model = joaat('sultan'), class = 0, plate = 'CIV001' }
+    stub.pedInVehicle = 888
+
+    zoneAction('ems_garage_central', _L('target_store'))()
+
+    eq(#stub.deletedVehicles, 0)
+    isTrue(stub.notifyLog[#stub.notifyLog].msg:find('must be in an ambulance', 1, true) ~= nil, 'not-in-ambulance notify')
+end)
+
+test('garage: storing while on foot is refused', function()
+    setup()
+    startGarage()
+    stub.pedInVehicle = 0
+
+    zoneAction('ems_garage_central', _L('target_store'))()
+
+    eq(#stub.deletedVehicles, 0)
+    isTrue(stub.notifyLog[#stub.notifyLog].msg:find('must be in an ambulance', 1, true) ~= nil, 'not-in-ambulance notify')
+end)
+
+test('garage: a police mav counts as an emergency helicopter', function()
+    setup()
+    startGarage()
+    stub.vehicles[999] = { model = joaat('policemav'), class = 15, plate = 'HELI01' }
+    stub.pedInVehicle = 999
+
+    zoneAction('ems_heli_central', _L('target_store'))()
+
+    eq(#stub.deletedVehicles, 1)
+    eq(stub.deletedVehicles[1], 999)
+end)
+
+test('garage: resource stop removes the registered zones', function()
+    setup()
+    startGarage()
+    stub.fireEvent('onResourceStop', 0, 'qb-emsjob')
+
+    eq(stub.zones['ems_garage_central'], nil)
+    eq(stub.zones['ems_heli_central'], nil)
+    isTrue(#stub.removedZones >= 5, 'duty + garage + helipad zones removed')
 end)
 
  ---------------------------------------------------------------------------

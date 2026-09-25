@@ -334,6 +334,91 @@ function GetPlayerName(source)
 end
 
  ---------------------------------------------------------------------------
+ -- Vehicles + local ped (client/garage.lua)
+ ---------------------------------------------------------------------------
+
+M.vehicles = {}          -- [handle] = { model, class, plate, heading, engineOn, fuel }
+M.deletedVehicles = {}   -- handles passed to DeleteVehicle
+M.spawnLog = {}          -- SpawnVehicle calls: { model, coords, network, veh }
+M.pedInVehicle = 0       -- GetVehiclePedIsIn result for the local ped
+M.warped = nil           -- TaskWarpPedIntoVehicle call
+
+local nextVehicleId = 500
+
+function PlayerPedId()
+    return tonumber(M.localSource) or 1
+end
+
+function GetVehiclePedIsIn(ped, lastVeh)
+    return M.pedInVehicle or 0
+end
+
+function GetEntityModel(veh)
+    local v = M.vehicles[veh]
+    return v and v.model or 0
+end
+
+function GetVehicleClass(veh)
+    local v = M.vehicles[veh]
+    return v and v.class or 0
+end
+
+function DeleteVehicle(veh)
+    M.deletedVehicles[#M.deletedVehicles + 1] = veh
+    M.vehicles[veh] = nil
+end
+
+function SetEntityHeading(veh, heading)
+    local v = M.vehicles[veh]
+    if v then v.heading = heading + 0.0 end
+end
+
+function SetVehicleNumberPlateText(veh, plate)
+    local v = M.vehicles[veh]
+    if v then v.plate = plate end
+end
+
+function SetVehicleDirtLevel() end
+
+function SetVehicleEngineOn(veh, on)
+    local v = M.vehicles[veh]
+    if v then v.engineOn = on == true end
+end
+
+function SetVehicleEngineHealth() end
+function SetVehicleBodyHealth() end
+
+function SetVehicleFuelLevel(veh, fuel)
+    local v = M.vehicles[veh]
+    if v then v.fuel = fuel + 0.0 end
+end
+
+function SetVehicleLivery(veh, livery)
+    local v = M.vehicles[veh]
+    if v then v.livery = livery end
+end
+
+function TaskWarpPedIntoVehicle(ped, veh, seat)
+    M.warped = { ped = ped, veh = veh, seat = seat }
+end
+
+-- Client side of QBCore.Functions.SpawnVehicle: create a fake vehicle,
+-- record the call, then hand the handle to the setup callback.
+function QBCoreStub.Functions.SpawnVehicle(model, cb, coords, network)
+    nextVehicleId = nextVehicleId + 1
+    local veh = nextVehicleId
+    M.vehicles[veh] = { model = joaat(model), class = 0, plate = 'NEW' .. veh }
+    M.spawnLog[#M.spawnLog + 1] = { model = model, coords = coords, network = network == true, veh = veh }
+    cb(veh)
+    return veh
+end
+
+function QBCoreStub.Functions.GetPlate(veh)
+    local v = M.vehicles[veh]
+    return v and v.plate or ''
+end
+
+ ---------------------------------------------------------------------------
  -- Misc natives / globals
  ---------------------------------------------------------------------------
 
@@ -436,6 +521,27 @@ function M.invokeNui(name, data)
     return responded
 end
 
+--- qb-target zone stubs: record registered zones (name -> options) so tests
+--- can invoke zone option actions. registerExport does NOT colon-strip, so
+--- these take the proxy table as a leading _ argument.
+M.zones = {}          -- [name] = { coords, length, width, options, distance }
+M.removedZones = {}   -- names passed to RemoveZone
+
+M.registerExport('qb-target', 'AddBoxZone', function(_, name, coords, length, width, opts, options)
+    M.zones[name] = {
+        coords = coords,
+        length = length,
+        width = width,
+        options = options and options.options or {},
+        distance = options and options.distance or nil,
+    }
+end)
+
+M.registerExport('qb-target', 'RemoveZone', function(_, name)
+    M.removedZones[#M.removedZones + 1] = name
+    M.zones[name] = nil
+end)
+
  ---------------------------------------------------------------------------
  -- Blip natives + timers: the client DownedAlert handler runs when the
  -- server alert is delivered in-process via TriggerClientEvent, and it
@@ -469,6 +575,30 @@ function SetTimeout(ms, fn)
     M.timers[#M.timers + 1] = { ms = ms, fn = fn }
 end
 
+-- Draw / input natives used by client draw loops and blip refresh
+function SetBlipAlpha(blip, alpha)
+    local b = M.blips[blip]
+    if b then b.alpha = alpha end
+end
+
+function IsPedInAnyVehicle(ped, atGetIn)
+    return (M.pedInVehicle or 0) ~= 0
+end
+
+function IsControlJustReleased(pad, control) return false end
+
+function SetTextScale() end
+function SetTextFont() end
+function SetTextProportional() end
+function SetTextColour() end
+function SetTextEntry() end
+function SetTextCentre() end
+function AddTextComponentString() end
+function SetDrawOrigin() end
+function DrawText() end
+function DrawRect() end
+function ClearDrawOrigin() end
+
  ---------------------------------------------------------------------------
  -- Reset between tests
  ---------------------------------------------------------------------------
@@ -482,6 +612,13 @@ function M.reset()
     M.threads = {}
     M.blips = {}
     M.timers = {}
+    M.vehicles = {}
+    M.deletedVehicles = {}
+    M.spawnLog = {}
+    M.pedInVehicle = 0
+    M.warped = nil
+    M.zones = {}
+    M.removedZones = {}
     M.nuiMessages = {}
     -- NOTE: nuiCallbacks intentionally survive reset, like M.callbacks and
     -- M.useableItems: load-time RegisterNUICallback registrations must keep
