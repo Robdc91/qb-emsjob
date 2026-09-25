@@ -50,6 +50,16 @@ local function takeOut(hospital, kind)
                 return opts
             end
 
+            --- Resolve the ox_lib module: the `lib` global only exists in this
+            --- resource when its init.lua was imported, so fall back to a
+            --- cross-resource require (FiveM lua54). nil = no usable ox_lib.
+            local function getLib()
+                if type(lib) == 'table' then return lib end
+                local ok, mod = pcall(require, '@ox_lib/init.lua')
+                if ok and type(mod) == 'table' then return mod end
+                return nil
+            end
+
             if GetResourceState('qb-input') == 'started' then
                 local ok, input = pcall(function()
                     return exports['qb-input']:ShowInput({
@@ -63,19 +73,24 @@ local function takeOut(hospital, kind)
                 if ok and input and input.vehicle then
                     model = input.vehicle
                 end
-            elseif GetResourceState('ox_lib') == 'started' then
-                local ok, picked = pcall(function()
-                    local entries = {}
-                    for _, m in ipairs(cfg.vehicles) do
-                        entries[#entries + 1] = { value = m, label = m }
+            else
+                local l = getLib()
+                if l and l.inputDialog then
+                    local ok, picked = pcall(function()
+                        local entries = {}
+                        for _, m in ipairs(cfg.vehicles) do
+                            entries[#entries + 1] = { value = m, label = m }
+                        end
+                        local res = l.inputDialog(hospital.label, {
+                            { type = 'select', label = 'Vehicle', options = entries, default = entries[1].value, searchable = true },
+                        })
+                        -- ox_lib returns rows positionally; accept a named
+                        -- field too for forks that support it.
+                        return res and (res[1] or res.vehicle) or nil
+                    end)
+                    if ok and picked then
+                        model = picked
                     end
-                    local res = lib.inputDialog(hospital.label, {
-                        { type = 'select', label = 'Vehicle', name = 'vehicle', options = entries, default = entries[1].value },
-                    })
-                    return res and res.vehicle
-                end)
-                if ok and picked then
-                    model = picked
                 end
             end
         end

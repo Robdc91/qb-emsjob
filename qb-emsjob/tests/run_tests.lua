@@ -1279,7 +1279,8 @@ test('garage menu: ox_lib inputDialog is used when qb-input is absent (Qbox)', f
     lib = {
         inputDialog = function(header, rows)
             dialogArgs = { header = header, rows = rows }
-            return { vehicle = 'ambulance2' }
+            -- real ox_lib returns row values positionally
+            return { 'ambulance2' }
         end,
     }
 
