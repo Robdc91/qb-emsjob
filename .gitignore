@@ -1,2 +1,5 @@
 # Freebuff workspace metadata
 .freebuff/
+
+# Local-only NUI preview server (dev-harness.html needs no server otherwise)
+dev-server.ps1

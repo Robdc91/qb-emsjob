@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--
+        qb-emsjob | html/dev-harness.html
+        Browser-only dev harness for the duty menu NUI. Loads the REAL
+        style.css + script.js and drives them with mock SendNUIMessage
+        payloads. NOT shipped to FiveM: fxmanifest files {} lists only
+        index.html / style.css / script.js.
+    -->
+    <meta charset="UTF-8">
+    <title>EMS Duty Menu — Dev Harness</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* Harness-only chrome (not part of the game UI) */
+        #harness {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            width: 250px;
+            background: #0f1218;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 12px;
+            color: var(--text);
+            z-index: 9999;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        #harness h1 {
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+        #harness button {
+            display: block;
+            width: 100%;
+            margin-bottom: 6px;
+            padding: 6px 8px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: var(--panel-2);
+            color: var(--text);
+            font-size: 11px;
+            cursor: pointer;
+        }
+        #harness button:hover { border-color: var(--accent); }
+        #harness label { display: block; color: var(--muted); margin: 8px 0 3px; }
+        #harness select, #harness input[type="text"] {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid var(--line);
+            border-radius: 5px;
+            background: var(--panel-2);
+            color: var(--text);
+            font-size: 11px;
+        }
+        #harness-log {
+            margin-top: 8px;
+            max-height: 130px;
+            overflow-y: auto;
+            border-top: 1px solid var(--line);
+            padding-top: 6px;
+            color: var(--muted);
+            font-family: Consolas, monospace;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+        #harness-log .cb { color: var(--amber); }
+        #harness-log .msg { color: var(--accent); }
+        #app-preview-bg { background: #232834; }
+    </style>
+</head>
+<body id="app-preview-bg">
+
+    <!-- ===== The REAL NUI markup (mirror of index.html) ===== -->
+    <div id="app" class="hidden">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-left">
+                    <i class="fas fa-truck-medical"></i>
+                    <span>EMS DUTY</span>
+                </div>
+                <button id="close-btn" class="close-btn"><i class="fas fa-xmark"></i></button>
+            </div>
+
+            <!-- My status -->
+            <div class="section">
+                <div class="section-title">My Status</div>
+                <div class="callsign-row">
+                    <label for="callsign-input">Call-sign</label>
+                    <input id="callsign-input" type="text" maxlength="8" placeholder="e.g. M-24" autocomplete="off">
+                </div>
+                <div class="status-grid">
+                    <button class="status-btn" data-status="available">10-8</button>
+                    <button class="status-btn" data-status="busy">10-7</button>
+                    <button class="status-btn" data-status="outofservice">10-23</button>
+                    <button class="status-btn" data-status="duty-toggle">Duty</button>
+                    <button class="status-btn wide" data-status="save">Save &amp; Apply</button>
+                </div>
+            </div>
+
+            <!-- On-duty colleagues -->
+            <div class="section">
+                <div class="section-title">On-Duty <span id="roster-count" class="count">0</span></div>
+                <div id="roster-list" class="roster">
+                    <div class="empty">No colleagues on duty.</div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-hint"><kbd>ESC</kbd> to close</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Harness control panel ===== -->
+    <div id="harness">
+        <h1>Dev Harness</h1>
+        <button data-send="open">Send open</button>
+        <button data-send="emptyOpen">Send open (empty roster)</button>
+        <label>Push roster</label>
+        <select id="roster-scenario">
+            <option value="all">All statuses</option>
+            <option value="solo">Only me</option>
+            <option value="none">Empty</option>
+        </select>
+        <button data-send="roster">Send roster</button>
+        <label>My state</label>
+        <input type="text" id="state-callsign" placeholder="Call-sign (e.g. M-24)">
+        <select id="state-status">
+            <option value="">(none)</option>
+            <option value="available">available</option>
+            <option value="busy">busy</option>
+            <option value="outofservice">outofservice</option>
+        </select>
+        <button data-send="state">Send state</button>
+        <div id="harness-log"></div>
+    </div>
+
+    <script src="dev-harness.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
