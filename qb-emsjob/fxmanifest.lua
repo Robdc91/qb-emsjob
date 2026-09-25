@@ -5,7 +5,7 @@ lua54 'yes'
 name 'qb-emsjob'
 description 'EMS/Paramedic job for QBCore: revive & heal players, ambulance garage, duty points, first-aid items'
 author 'Buffy'
-version '1.3.4'
+version '1.4.0'
 
 ui_page 'html/index.html'
 
@@ -25,9 +25,10 @@ shared_scripts {
 client_scripts {
     -- NOTE: no @-includes for qb-target/PolyZone here. The @ syntax would
     -- execute their code a second time inside this resource; the exports
-    -- (exports['qb-target']) work as long as qb-target is started first,
-    -- which the dependencies block below enforces.
+    -- (via client/target_bridge.lua) work as long as the chosen target
+    -- resource is started before this one.
     'client/main.lua',
+    'client/target_bridge.lua',
     'client/duty_menu.lua',
     'client/revive.lua',
     'client/garage.lua',
@@ -43,9 +44,11 @@ server_scripts {
     'server/items.lua',
 }
 
+-- qb-core is provided by real qb-core OR the qbx_core QB bridge, so this
+-- resource runs on both classic QBCore and Qbox. qb-target/PolyZone are NOT
+-- hard deps: the client target bridge uses qb-target when present and
+-- ox_target otherwise (Config.UseTarget = false always works, 3D text).
 dependencies {
     'qb-core',
-    'qb-target',
-    'PolyZone',
     'oxmysql',
 }

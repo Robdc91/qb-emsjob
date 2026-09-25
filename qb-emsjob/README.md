@@ -1,6 +1,6 @@
 # qb-emsjob
 
-A complete, self-contained **EMS / Paramedic job** for **QBCore** on FiveM.
+A complete, self-contained **EMS / Paramedic job** for **QBCore and Qbox** on FiveM.
 
 ## Features
 
@@ -18,7 +18,8 @@ A complete, self-contained **EMS / Paramedic job** for **QBCore** on FiveM.
 - 🪪 **Optional insurance** — insured patients get a discount or full coverage (`player_insurance` table)
 - 🌍 **Locales** — English & Spanish (`set qb_locale es`)
 - 🔒 **Server-side validation** — job/grade/distance/item checks on every action
-- ✅ Works with or without `qb-target` / `PolyZone` (set `Config.UseTarget = false` for 3D text)
+- ✅ Works with or without `qb-target` / `ox_target` (set `Config.UseTarget = false` for 3D text)
+- 📦 **Runs on QBCore and Qbox** — auto-detects qb-target vs ox_target and ox_inventory at runtime
 
 ## Testing
 
@@ -55,17 +56,18 @@ Open `html/dev-harness.html` in a browser to click through the duty menu outside
 
 | Resource | Required |
 |---|---|
-| [qb-core](https://github.com/qbcore-framework/qb-core) | ✅ |
+| [qb-core](https://github.com/qbcore-framework/qb-core) *or* [qbx_core](https://github.com/Qbox-project/qbx_core) (via its QB bridge) | ✅ |
 | [oxmysql](https://github.com/overextended/oxmysql) | ✅ |
-| [qb-target](https://github.com/qbcore-framework/qb-target) | optional (when `Config.UseTarget = true`) |
-| [PolyZone](https://github.com/qbcore-framework/PolyZone) | optional (same as above) |
+| [qb-target](https://github.com/qbcore-framework/qb-target) *or* [ox_target](https://github.com/overextended/ox_target) | optional (when `Config.UseTarget = true`); auto-detected |
+| [ox_inventory](https://github.com/overextended/ox_inventory) | optional; item lookups prefer it when started (Qbox) |
+| [PolyZone](https://github.com/qbcore-framework/PolyZone) | optional qb-target companion (never required directly) |
 
 ## Installation
 
 1. Drop the `qb-emsjob` folder into your `resources/[qb]` directory.
 2. Run `install/ems_job.sql` on your database (adds the `ambulance` job + grades). For invoice billing + insurance, also run `install/ems_billing.sql`.
 3. (Optional insurance) give players insurance rows in `player_insurance`, e.g. via the example in `install/ems_billing.sql`.
-4. Make sure you have `bandage` and `ifaks` items in `qb-core/shared/items.lua` (most servers ship with them; otherwise add them).
+4. Make sure you have `bandage` and `ifaks` items in `qb-core/shared/items.lua` (QBCore) or in ox_inventory (Qbox; items added to `qbx_core/shared/items.lua` are auto-synced to ox_inventory).
 5. Add to your `server.cfg`:
 
    ```cfg
@@ -75,6 +77,8 @@ Open `html/dev-harness.html` in a browser to click through the duty menu outside
 6. Optional: set the language with `set qb_locale en` (or `es`).
 
 > **Invoice mode:** set `Config.BillingMode = 'invoices'` (default) to send qb-phone invoices patients can pay or contest, or `'instant'` for legacy immediate charges. Insurance rules live under `Config.Insurance`.
+>
+> **Qbox:** no extra setup — with the QB bridge enabled (default), the resource uses qbx_core's `qb-core` compatibility layer, routes interaction points to ox_target, and looks items up in ox_inventory. Job grades in `install/ems_job.sql` use QBCore's string form; Qbox needs numeric grade names, so adjust `qbx_core/shared/jobs.lua` instead of running that SQL.
 
 ## Usage
 

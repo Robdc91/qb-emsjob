@@ -108,7 +108,7 @@ local zoneNames = {}
 local function addGarageZone(hospital)
     local name = ('ems_garage_%s'):format(hospital.id)
     local g = hospital.garage
-    exports['qb-target']:AddBoxZone(name, g.interact, g.zone.length or 6.0, g.zone.width or 6.0, {
+    TargetAddBoxZone(name, g.interact, g.zone.length or 6.0, g.zone.width or 6.0, {
         name = name,
         heading = g.zone.heading or 0,
         debugPoly = false,
@@ -137,7 +137,7 @@ end
 local function addHelipadZone(hospital)
     local name = ('ems_heli_%s'):format(hospital.id)
     local hp = hospital.helipad
-    exports['qb-target']:AddBoxZone(name, hp.interact, 8.0, 8.0, {
+    TargetAddBoxZone(name, hp.interact, 8.0, 8.0, {
         name = name,
         heading = 0,
         debugPoly = false,
@@ -267,7 +267,7 @@ AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     if Config.UseTarget then
         for _, name in ipairs(zoneNames) do
-            exports['qb-target']:RemoveZone(name)
+            TargetRemoveZone(name)
         end
     end
     for _, blip in ipairs(heliBlips) do

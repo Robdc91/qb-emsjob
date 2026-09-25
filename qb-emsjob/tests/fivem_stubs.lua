@@ -537,6 +537,15 @@ function GetConvar(name, default)
     return default
 end
 
+-- Started-resource registry: drives GetResourceState-based bridging
+-- (target_bridge picks qb-target vs ox_target, items.lua picks the
+-- inventory layer). Tests add names, e.g. stub.started['ox_target'] = true.
+M.started = {}
+
+function GetResourceState(resource)
+    return M.started[resource] and 'started' or 'missing'
+end
+
 function joaat(str)
     local hash = 2166136261
     for i = 1, #str do
@@ -647,6 +656,44 @@ end)
 M.registerExport('qb-target', 'RemoveTargetEntity', function(_, ped)
     M.removedEntityTargets[#M.removedEntityTargets + 1] = ped
     M.entityTargets[ped] = nil
+end)
+
+-- ox_target stubs: mirror of the qb-target ones for the Qbox bridge path.
+-- addBoxZone/addLocalEntity return an id; removeZone/removeLocalEntity take
+-- it back. registerExport does NOT colon-strip (leading _ proxy table).
+M.oxZones = {}          -- [id] = { coords, size, rotation, options }
+M.oxRemovedZoneIds = {}
+M.oxEntityIds = {}      -- [id] = { entity, options }
+M.oxRemovedEntityIds = {}
+local oxNextId = 0
+
+M.registerExport('ox_target', 'addBoxZone', function(_, cfg)
+    oxNextId = oxNextId + 1
+    M.oxZones[oxNextId] = cfg
+    return oxNextId
+end)
+
+M.registerExport('ox_target', 'removeZone', function(_, id)
+    M.oxRemovedZoneIds[#M.oxRemovedZoneIds + 1] = id
+    M.oxZones[id] = nil
+end)
+
+M.registerExport('ox_target', 'addLocalEntity', function(_, entity, options)
+    oxNextId = oxNextId + 1
+    M.oxEntityIds[oxNextId] = { entity = entity, options = options }
+    return oxNextId
+end)
+
+M.registerExport('ox_target', 'removeLocalEntity', function(_, id)
+    M.oxRemovedEntityIds[#M.oxRemovedEntityIds + 1] = id
+    M.oxEntityIds[id] = nil
+end)
+
+-- ox_inventory stub for the items.lua lookup bridge.
+M.oxItems = {}
+
+M.registerExport('ox_inventory', 'Items', function(_, item)
+    return M.oxItems[item] or nil
 end)
 
  ---------------------------------------------------------------------------
@@ -776,6 +823,16 @@ function M.reset()
     M.warped = nil
     M.zones = {}
     M.removedZones = {}
+    -- ox_target/ox_inventory bridge stores. Clearing the ox maps can leave
+    -- stale ids in target_bridge.lua's module-local name->id maps (which,
+    -- like trackedPeds, survive reset); stale ids only ever reach remove
+    -- calls, which no-op on unknown ids, so this stays safe.
+    M.oxZones = {}
+    M.oxRemovedZoneIds = {}
+    M.oxEntityIds = {}
+    M.oxRemovedEntityIds = {}
+    M.oxItems = {}
+    M.started = {}
     -- NOTE: entityTargets/removedEntityTargets intentionally survive reset:
     -- client/revive.lua tracks attached peds in a module-local table that
     -- also survives, and the two must stay in lockstep or the tracker will

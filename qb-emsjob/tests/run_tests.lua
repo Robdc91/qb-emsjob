@@ -7,7 +7,8 @@
       - billing (instant vs invoices) + insurance + respawn fees
       - EMS alert relay (server/ems_alerts.lua)
       - duty roster sync (server/duty_menu.lua)
-      - useable item registration (server/items.lua)
+      - useable item registration (server/items.lua), incl. ox_inventory fallback
+      - target bridge (client/target_bridge.lua): qb-target vs ox_target (Qbox)
       - duty menu NUI controller (client/duty_menu.lua) via statebag + NUI stubs
       - garage controller (client/garage.lua) via qb-target + vehicle stubs
       - revive/laststand controller (client/revive.lua) with fake-time thread stepping
@@ -63,13 +64,15 @@ dofile('server/items.lua')
 
 -- Client side: client/main.lua defines the shared globals (IsEMS, OnDuty,
 -- EMSNotify) that client/duty_menu.lua builds on. Its lifecycle handlers are
--- only registered here, never fired, and qb-target is not stubbed — so keep
--- Config.UseTarget = false to leave the 3D-text interaction thread inert.
--- Blips are disabled too: their CreateThread runs at load and the blip
--- natives are not stubbed.
+-- only registered here, never fired, and no target backend is declared yet —
+-- so keep Config.UseTarget = false to leave the 3D-text thread inert. The
+-- target bridge declares qb-target as the default backend in setup().
+-- Blips stay disabled: their CreateThread would start a refresh loop that
+-- the stubs cannot step deterministically.
 Config.UseTarget = false
 Config.EnableBlips = false
 dofile('client/main.lua')
+dofile('client/target_bridge.lua')
 dofile('client/duty_menu.lua')
 dofile('client/garage.lua')
 dofile('client/revive.lua')
@@ -104,6 +107,12 @@ local function setup()
     Config.RespawnFee = 0
     Config.UseTarget = false
     stub.localSource = 1
+
+    -- QBCore stack default for the target bridge; Qbox tests override it.
+    -- The bridge caches its backend in a module-local that survives reset,
+    -- so re-arm detection every test.
+    stub.started['qb-target'] = true
+    TargetBridgeReset()
 
     -- Client scenario globals (client/main.lua): on-duty, logged-in medic.
     -- duty_menu.lua also keeps module-local menu state across tests, so
@@ -936,7 +945,10 @@ end)
  ---------------------------------------------------------------------------
 
 --- Register the garage/duty zones as qb-target would on resource start.
+--- (qb-target declared started so the bridge routes there; the Qbox tests
+--- below override it with ox_target.)
 local function startGarage()
+    stub.started['qb-target'] = true
     Config.UseTarget = true
     stub.fireEvent('onResourceStart', 0, 'qb-emsjob')
 end
@@ -1068,6 +1080,111 @@ test('garage: resource stop removes the registered zones', function()
     eq(stub.zones['ems_garage_central'], nil)
     eq(stub.zones['ems_heli_central'], nil)
     isTrue(#stub.removedZones >= 5, 'duty + garage + helipad zones removed')
+end)
+
+ ---------------------------------------------------------------------------
+ -- Target bridge: qb-target vs ox_target (Qbox) selection
+ ---------------------------------------------------------------------------
+
+test('target bridge: routes zones to qb-target when it is started', function()
+    setup()
+    stub.started['qb-target'] = true
+
+    TargetAddBoxZone('bridge_qb', V(1, 2, 3), 4.0, 5.0, { heading = 90.0 },
+        { options = { { label = 'L', icon = 'i', job = 'ambulance', action = function() end } }, distance = 2.5 })
+
+    isTrue(stub.zones['bridge_qb'] ~= nil, 'zone went to qb-target')
+    eq(stub.zones['bridge_qb'].length, 4.0)
+    isTrue(next(stub.oxZones) == nil, 'nothing went to ox_target')
+
+    TargetRemoveZone('bridge_qb')
+    eq(#stub.removedZones, 1)
+end)
+
+test('target bridge: maps zones to ox_target shape for Qbox', function()
+    setup()
+    stub.started['qb-target'] = nil -- Qbox: no qb-target resource
+    stub.started['ox_target'] = true
+
+    local action = function() end
+    TargetAddBoxZone('bridge_ox', V(1, 2, 3), 4.0, 5.0, { heading = 90.0, debugPoly = true },
+        { options = { { label = 'Loot', icon = 'fa-box', job = 'ambulance', action = action } }, distance = 2.5 })
+
+    eq(next(stub.oxZones) ~= nil, true, 'zone went to ox_target')
+    local id, cfg = next(stub.oxZones)
+    eq(cfg.coords.x, 1.0)
+    eq(cfg.size.x, 4.0)
+    eq(cfg.size.y, 5.0)
+    eq(cfg.rotation, 90.0)
+    eq(cfg.debug, true)
+    eq(#cfg.options, 1)
+    eq(cfg.options[1].label, 'Loot')
+    eq(cfg.options[1].groups, 'ambulance')   -- qb-target `job` -> ox `groups`
+    eq(cfg.options[1].onSelect, action)      -- qb-target `action` -> ox `onSelect`
+    eq(cfg.options[1].distance, 2.5)
+    isTrue(stub.zones['bridge_ox'] == nil, 'nothing went to qb-target')
+
+    -- removal maps by name to the ox zone id
+    TargetRemoveZone('bridge_ox')
+    eq(#stub.oxRemovedZoneIds, 1)
+    eq(stub.oxRemovedZoneIds[1], id)
+end)
+
+test('target bridge: entity options map to ox_target and remove by id', function()
+    setup()
+    stub.started['qb-target'] = nil -- Qbox: no qb-target resource
+    stub.started['ox_target'] = true
+
+    local ped = 71234
+    TargetAddEntity(ped, {
+        options = { { label = 'Revive', canInteract = function() return true end, action = function() end } },
+        distance = 2.0,
+    })
+
+    local id, cfg = next(stub.oxEntityIds)
+    isTrue(id ~= nil, 'entity target registered on ox_target')
+    eq(cfg.entity, ped)
+    eq(cfg.options[1].label, 'Revive')
+    isTrue(cfg.options[1].canInteract ~= nil, 'canInteract passed through')
+    eq(cfg.options[1].distance, 2.0)
+
+    TargetRemoveEntity(ped)
+    eq(#stub.oxRemovedEntityIds, 1)
+    eq(stub.oxRemovedEntityIds[1], id)
+end)
+
+test('target bridge: qb-target still wins when both are started', function()
+    setup()
+    stub.started['qb-target'] = true
+    stub.started['ox_target'] = true
+
+    TargetAddBoxZone('bridge_both', V(0, 0, 0), 2.0, 2.0, {}, { options = {}, distance = 2.0 })
+
+    isTrue(stub.zones['bridge_both'] ~= nil, 'qb-target preferred on hybrid stacks')
+    isTrue(next(stub.oxZones) == nil, 'ox_target untouched')
+end)
+
+test('items: lookup falls back to ox_inventory when it is started', function()
+    setup()
+    stub.started['ox_inventory'] = true
+    TargetBridgeReset()
+    -- HealItem = 'bandage', ReviveItem = 'ifaks'. With ox_inventory active,
+    -- the ox layer is authoritative: bandage exists ONLY there, ifaks ONLY in
+    -- QBCore.Shared.Items (and must be ignored). Proves both preference and
+    -- exclusion in one pass.
+    stub.oxItems['bandage'] = { name = 'bandage', label = 'Bandage' }
+    stub.QBCore.Shared.Items['bandage'] = nil
+    stub.QBCore.Shared.Items['ifaks'] = { name = 'ifaks', label = 'Ifaks' }
+    -- useableItems survives reset (load-time registrations), so clear both
+    -- to prove the re-registration itself chooses the right inventory layer
+    stub.useableItems['bandage'] = nil
+    stub.useableItems['ifaks'] = nil
+
+    -- re-run the useable-item registration exactly as a resource restart would
+    dofile('server/items.lua')
+
+    isTrue(stub.useableItems['bandage'] ~= nil, 'ox_inventory item registered useable')
+    isTrue(stub.useableItems['ifaks'] == nil, 'QBCore-only item ignored while ox_inventory is active')
 end)
 
  ---------------------------------------------------------------------------

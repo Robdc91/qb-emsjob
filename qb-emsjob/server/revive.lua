@@ -39,7 +39,12 @@ local function validateInteraction(src, targetId, needItem)
             return nil
         end
         EMSPlayer.Functions.RemoveItem(needItem, 1)
-        TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[needItem], 'remove')
+        -- ItemBox is cosmetic (qb-inventory); guard for Qbox/ox_inventory where
+        -- QBCore.Shared.Items may not hold the item.
+        local itemData = QBCore.Shared.Items and QBCore.Shared.Items[needItem] or nil
+        if itemData then
+            TriggerClientEvent('inventory:client:ItemBox', src, itemData, 'remove')
+        end
     end
 
     return Target

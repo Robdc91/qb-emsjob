@@ -185,7 +185,7 @@ local function setupDutyInteractions()
             local point = h.duty
             if point then
                 local name = ('ems_duty_%s'):format(h.id)
-                exports['qb-target']:AddBoxZone(name, point.coords, point.length, point.width, {
+                TargetAddBoxZone(name, point.coords, point.length, point.width, {
                     name = name,
                     heading = point.heading or 0,
                     debugPoly = false,
@@ -275,7 +275,7 @@ AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     if Config.UseTarget then
         for _, name in ipairs(dutyZones) do
-            exports['qb-target']:RemoveZone(name)
+            TargetRemoveZone(name)
         end
     end
 end)

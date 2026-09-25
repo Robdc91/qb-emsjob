@@ -2,6 +2,16 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.4.0] - 2026-09-25
+
+### Added
+- Qbox (qbx_core) support alongside classic QBCore: a client target bridge
+  routes interaction points to qb-target or ox_target (whichever is started,
+  qb-target preferred), item existence checks prefer ox_inventory when it is
+  running, and the cosmetic `inventory:client:ItemBox` call is guarded for
+  stacks where QBCore.Shared.Items does not hold the item. qb-target/PolyZone
+  are no longer hard manifest dependencies.
+
 ## [1.3.4] - 2026-09-25
 
 ### Changed

@@ -276,7 +276,7 @@ CreateThread(function()
                         activePeds[ped] = true
                         if not trackedPeds[ped] then
                             trackedPeds[ped] = true
-                            exports['qb-target']:AddTargetEntity(ped, {
+                            TargetAddEntity(ped, {
                                 options = {
                                     {
                                         label = _L('target_revive'),
@@ -309,7 +309,7 @@ CreateThread(function()
             -- Clean up stale entries
             for ped in pairs(trackedPeds) do
                 if not activePeds[ped] or not DoesEntityExist(ped) then
-                    exports['qb-target']:RemoveTargetEntity(ped)
+                    TargetRemoveEntity(ped)
                     trackedPeds[ped] = nil
                 end
             end
@@ -401,7 +401,7 @@ AddEventHandler('onResourceStop', function(res)
     clearDownedBlip()
     for ped in pairs(trackedPeds) do
         if DoesEntityExist(ped) then
-            exports['qb-target']:RemoveTargetEntity(ped)
+            TargetRemoveEntity(ped)
         end
     end
 end)
