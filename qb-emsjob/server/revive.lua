@@ -62,6 +62,10 @@ RegisterNetEvent('qb-emsjob:server:RevivePlayer', function(targetId)
         return
     end
 
+    -- Normalize before use: billing and notify events need a numeric source,
+    -- not whatever raw value the client sent (mirrors HealPlayer below).
+    targetId = tonumber(targetId)
+
     local Target = validateInteraction(src, targetId, Config.ReviveItem)
     if not Target then return end
 

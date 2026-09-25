@@ -106,6 +106,7 @@ local function setup()
     -- force the menu closed for a clean start (no-op when already closed).
     OnDuty = true
     isLoggedIn = true
+    PlayerJob = { name = 'ambulance', label = 'EMS', onduty = true, grade = { level = 3 } }
     stub.invokeNui('close')
 
     stub.addPlayer(1, {
@@ -719,12 +720,12 @@ end
 
 test('duty menu: open is gated to EMS players', function()
     setup()
-    stub.players[1].PlayerData.job.name = 'mechanic'
+    PlayerJob.name = 'mechanic' -- IsEMS() reads the client-side PlayerJob global
     OpenDutyMenu()
     eq(nuiCount('open'), 0)
     eq(stub.nuiFocus.focused, false)
 
-    stub.players[1].PlayerData.job.name = 'ambulance'
+    PlayerJob.name = 'ambulance'
     OpenDutyMenu()
     eq(nuiCount('open'), 1)
     eq(stub.nuiFocus.focused, true)
