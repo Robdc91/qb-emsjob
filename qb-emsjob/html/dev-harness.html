@@ -50,6 +50,15 @@
         }
         #harness button:hover { border-color: var(--accent); }
         #harness label { display: block; color: var(--muted); margin: 8px 0 3px; }
+        #harness label.duty-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0 0 8px;
+            color: var(--text);
+            cursor: pointer;
+        }
+        #harness label.duty-toggle input { accent-color: var(--accent); }
         #harness select, #harness input[type="text"] {
             width: 100%;
             padding: 4px 6px;
@@ -123,6 +132,10 @@
     <!-- ===== Harness control panel ===== -->
     <div id="harness">
         <h1>Dev Harness</h1>
+        <label class="duty-toggle">
+            <input type="checkbox" id="duty-switch" checked>
+            On duty (affects open/state/toggle)
+        </label>
         <button data-send="open">Send open</button>
         <button data-send="emptyOpen">Send open (empty roster)</button>
         <label>Push roster</label>

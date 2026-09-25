@@ -14,7 +14,14 @@
         { source: 12, name: 'Sarah Vale', callsign: 'M-9',  status: 'available',    onDuty: true,  self: false }
     ];
 
-    var state = { onDuty: true, status: 'available', callsign: 'M-24' };
+    var state = { status: 'available', callsign: 'M-24' };
+
+    /* Duty is a live panel switch: every simulated message reads it, and the
+       toggleDuty simulation flips it like the server would. */
+    function dutyNow() {
+        var sw = document.getElementById('duty-switch');
+        return sw ? sw.checked : true;
+    }
 
     /* --- tiny event log --- */
     var logBox = document.getElementById('harness-log');
@@ -41,6 +48,12 @@
         return el && el.value ? el.value : state.callsign;
     }
 
+    /* Keep the self roster row in lockstep with the duty switch, like
+       buildRoster() does from the player's real job.onduty. */
+    function syncSelf() {
+        roster[0].onDuty = dutyNow();
+    }
+
     /* --- fetch interceptor: capture the NUI callbacks the UI posts ----
        (close / toggleDuty / save). All are answered locally so the page
        never touches the network. toggleDuty additionally simulates the
@@ -60,8 +73,11 @@
         }
         if (name === 'toggleDuty') {
             setTimeout(function () {
-                state.onDuty = !state.onDuty;
-                sendNui({ action: 'state', state: { onDuty: state.onDuty, status: state.status, callsign: currentCallsign() } });
+                /* The server decides the new duty; mirror it into the switch. */
+                var sw = document.getElementById('duty-switch');
+                if (sw) sw.checked = !sw.checked;
+                syncSelf();
+                sendNui({ action: 'state', state: { onDuty: dutyNow(), status: state.status, callsign: currentCallsign() } });
                 sendNui({ action: 'roster', roster: roster });
             }, 150);
         }
@@ -72,6 +88,7 @@
                 var saved = JSON.parse(opts.body);
                 state.status = saved.status || null;
                 state.callsign = saved.callsign || state.callsign;
+                syncSelf();
                 roster[0].status = saved.status || null;
                 roster[0].callsign = saved.callsign || '';
                 setTimeout(function () { sendNui({ action: 'roster', roster: roster }); }, 100);
@@ -85,7 +102,7 @@
         return {
             action: 'open',
             state: {
-                onDuty: state.onDuty,
+                onDuty: dutyNow(),
                 status: state.status,
                 callsign: document.getElementById('state-callsign').value || state.callsign,
             },
@@ -95,25 +112,29 @@
 
     var scenarios = {
         open: function () {
+            syncSelf();
             sendNui(openMsg(true));   /* 1.3.1 behavior: roster embedded in open */
         },
         emptyOpen: function () {
+            syncSelf();
             sendNui(openMsg(false));  /* pre-1.3.1 flash: empty until refresh */
         },
         roster: function () {
             var mode = document.getElementById('roster-scenario').value;
+            syncSelf();
             var list = roster;
             if (mode === 'solo') list = [roster[0]];
             if (mode === 'none') list = [];
             sendNui({ action: 'roster', roster: list });
         },
         state: function () {
+            syncSelf();
             var cs = document.getElementById('state-callsign').value;
             var st = document.getElementById('state-status').value;
             sendNui({
                 action: 'state',
                 state: {
-                    onDuty: state.onDuty,
+                    onDuty: dutyNow(),
                     status: st === '' ? null : st,
                     callsign: cs === '' ? state.callsign : cs,
                 },
