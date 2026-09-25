@@ -38,26 +38,45 @@ local function takeOut(hospital, kind)
             return
         end
 
-        -- Menu of configured vehicles for this spot (qb-input optional; falls back to first entry)
+        -- Vehicle picker: qb-input on QBCore, ox_lib inputDialog on Qbox
+        -- (ox_lib ships with qbx_core), first configured vehicle as fallback.
         local model = cfg.vehicles[1]
         if #cfg.vehicles > 1 then
-            local ok, input = pcall(function()
-                return exports['qb-input']:ShowInput({
-                    header = hospital.label,
-                    submitText = 'Take Out',
-                    inputs = {
-                        { text = 'Vehicle', name = 'vehicle', type = 'select', options = (function()
-                            local opts = {}
-                            for _, m in ipairs(cfg.vehicles) do
-                                opts[#opts + 1] = { value = m, text = m }
-                            end
-                            return opts
-                        end)() },
-                    },
-                })
-            end)
-            if ok and input and input.vehicle then
-                model = input.vehicle
+            local function vehicleOptions()
+                local opts = {}
+                for _, m in ipairs(cfg.vehicles) do
+                    opts[#opts + 1] = { value = m, text = m }
+                end
+                return opts
+            end
+
+            if GetResourceState('qb-input') == 'started' then
+                local ok, input = pcall(function()
+                    return exports['qb-input']:ShowInput({
+                        header = hospital.label,
+                        submitText = 'Take Out',
+                        inputs = {
+                            { text = 'Vehicle', name = 'vehicle', type = 'select', options = vehicleOptions() },
+                        },
+                    })
+                end)
+                if ok and input and input.vehicle then
+                    model = input.vehicle
+                end
+            elseif GetResourceState('ox_lib') == 'started' then
+                local ok, picked = pcall(function()
+                    local entries = {}
+                    for _, m in ipairs(cfg.vehicles) do
+                        entries[#entries + 1] = { value = m, label = m }
+                    end
+                    local res = lib.inputDialog(hospital.label, {
+                        { type = 'select', label = 'Vehicle', name = 'vehicle', options = entries, default = entries[1].value },
+                    })
+                    return res and res.vehicle
+                end)
+                if ok and picked then
+                    model = picked
+                end
             end
         end
 

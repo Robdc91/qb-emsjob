@@ -2,6 +2,21 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.4.1] - 2026-09-25
+
+### Fixed
+- Qbox: invoices now actually reach qbx_phone - it has no
+  `qb-phone:server:sendInvoice` event (the event silently did nothing), so
+  the invoice row is inserted directly into `phone_invoices` using the same
+  schema qbx_phone's /bill writes and its invoice app reads. Classic qb-phone
+  keeps using the event with no duplicate row.
+
+### Changed
+- Society credits on instant billing pick the running money system at
+  runtime: qbx_management -> Renewed-Banking -> legacy qb-management event.
+- Garage vehicle picker uses ox_lib's inputDialog when qb-input is absent
+  (Qbox), keeping qb-input preferred on QBCore.
+
 ## [1.4.0] - 2026-09-25
 
 ### Added

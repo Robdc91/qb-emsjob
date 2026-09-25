@@ -79,6 +79,11 @@ Open `html/dev-harness.html` in a browser to click through the duty menu outside
 > **Invoice mode:** set `Config.BillingMode = 'invoices'` (default) to send qb-phone invoices patients can pay or contest, or `'instant'` for legacy immediate charges. Insurance rules live under `Config.Insurance`.
 >
 > **Qbox:** no extra setup — with the QB bridge enabled (default), the resource uses qbx_core's `qb-core` compatibility layer, routes interaction points to ox_target, and looks items up in ox_inventory. Do **not** run `install/ems_job.sql`: Qbox defines jobs in Lua, and its stock `ambulance` job already works (qb-emsjob checks grade *levels* only). To mirror the QBCore salary ladder instead, see `install/qbox_jobs.lua`.
+>
+> **Qbox integration details** (auto-detected at runtime, no config needed):
+> - **Invoices** — classic qb-phone gets the `qb-phone:server:sendInvoice` event; on Qbox (qbx_phone) the invoice row is written directly to `phone_invoices` — the same table and schema qbx_phone's `/bill` and invoice app read — so billing works on both.
+> - **Society credit** — instant-billing profits go to `qbx_management:AddMoney` when started (the API qbx_phone itself pays invoices with), else `Renewed-Banking:addAccountMoney`, else the legacy `qb-management:server:addSocietyMoney` event.
+> - **Garage vehicle picker** — `qb-input` when present, else ox_lib's `lib.inputDialog` (ships with qbx_core), else the first configured vehicle.
 
 ## Usage
 

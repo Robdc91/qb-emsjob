@@ -696,6 +696,18 @@ M.registerExport('ox_inventory', 'Items', function(_, item)
     return M.oxItems[item] or nil
 end)
 
+-- Qbox society-money stubs (billing.lua's bridgeSociety order is
+-- qbx_management -> Renewed-Banking -> qb-management event).
+M.societyLog = {} -- { via = 'qbx' | 'renewed' | 'event', account, amount }
+
+M.registerExport('qbx_management', 'AddMoney', function(_, account, amount)
+    M.societyLog[#M.societyLog + 1] = { via = 'qbx', account = account, amount = amount }
+end)
+
+M.registerExport('Renewed-Banking', 'addAccountMoney', function(_, account, amount)
+    M.societyLog[#M.societyLog + 1] = { via = 'renewed', account = account, amount = amount }
+end)
+
  ---------------------------------------------------------------------------
  -- Blip natives + timers: the client DownedAlert handler runs when the
  -- server alert is delivered in-process via TriggerClientEvent, and it
@@ -832,6 +844,7 @@ function M.reset()
     M.oxEntityIds = {}
     M.oxRemovedEntityIds = {}
     M.oxItems = {}
+    M.societyLog = {}
     M.started = {}
     -- NOTE: entityTargets/removedEntityTargets intentionally survive reset:
     -- client/revive.lua tracks attached peds in a module-local table that

@@ -108,10 +108,11 @@ local function setup()
     Config.UseTarget = false
     stub.localSource = 1
 
-    -- QBCore stack default for the target bridge; Qbox tests override it.
-    -- The bridge caches its backend in a module-local that survives reset,
-    -- so re-arm detection every test.
+    -- QBCore stack defaults for the runtime bridges; Qbox tests override
+    -- them. The target bridge caches its backend in a module-local that
+    -- survives reset, so re-arm detection every test.
     stub.started['qb-target'] = true
+    stub.started['qb-phone'] = true -- classic qb-phone implements sendInvoice
     TargetBridgeReset()
 
     -- Client scenario globals (client/main.lua): on-duty, logged-in medic.
@@ -1162,6 +1163,138 @@ test('target bridge: qb-target still wins when both are started', function()
 
     isTrue(stub.zones['bridge_both'] ~= nil, 'qb-target preferred on hybrid stacks')
     isTrue(next(stub.oxZones) == nil, 'ox_target untouched')
+end)
+
+ ---------------------------------------------------------------------------
+ -- Qbox bridges: society money + phone invoices
+ ---------------------------------------------------------------------------
+
+test('society credit: prefers qbx_management when it is started', function()
+    setup()
+    Config.BillingMode = 'instant'
+    Config.Insurance.enabled = false
+    stub.started['qbx_management'] = true
+
+    local billed = EMSBill(2, 2500, 'qbox society')
+    eq(billed, 2500)
+    eq(#stub.societyLog, 1)
+    eq(stub.societyLog[1].via, 'qbx')
+    eq(stub.societyLog[1].account, 'ambulance')
+    eq(stub.societyLog[1].amount, 2500)
+    eq(eventCount('qb-management:server:addSocietyMoney'), 0)
+end)
+
+test('society credit: falls back to Renewed-Banking, then the legacy event', function()
+    setup()
+    Config.BillingMode = 'instant'
+    Config.Insurance.enabled = false
+
+    -- Renewed-Banking path (no qbx_management)
+    stub.started['Renewed-Banking'] = true
+    EMSBill(2, 1000, 'renewed society')
+    eq(#stub.societyLog, 1)
+    eq(stub.societyLog[1].via, 'renewed')
+    eq(eventCount('qb-management:server:addSocietyMoney'), 0)
+
+    -- Legacy event path (neither export resource started)
+    stub.started['Renewed-Banking'] = nil
+    stub.players[2].PlayerData.money.bank = 1000
+    EMSBill(2, 1000, 'legacy society')
+    eq(#stub.societyLog, 1) -- unchanged: event path used
+    eq(eventCount('qb-management:server:addSocietyMoney'), 1)
+end)
+
+test('invoices: qbx_phone gets a direct phone_invoices row, not the event', function()
+    setup()
+    Config.BillingMode = 'invoices'
+    Config.Insurance.enabled = false
+    stub.started['qb-phone'] = nil -- Qbox ships qbx_phone
+    stub.started['qbx_phone'] = true
+
+    local billed = EMSBill(2, 2500, 'qbox invoice')
+    eq(billed, 2500)
+    eq(eventCount('qb-phone:server:sendInvoice'), 0)
+
+    isTrue(stub.insertLog ~= nil and #stub.insertLog == 1, 'invoice row inserted')
+    local ins = stub.insertLog[1]
+    isTrue(ins.query:find('phone_invoices', 1, true) ~= nil, 'writes phone_invoices')
+    isTrue(ins.query:find('sendercitizenid', 1, true) ~= nil, 'schema matches stock phone_invoices')
+    eq(ins.params[1], 'PAT001')
+    eq(ins.params[2], 2500)
+    eq(ins.params[3], 'ambulance')
+
+    Config.Insurance.enabled = true
+end)
+
+test('invoices: classic qb-phone still gets the event with no duplicate row', function()
+    setup()
+    Config.BillingMode = 'invoices'
+    Config.Insurance.enabled = false
+    stub.started['qb-phone'] = true
+
+    EMSBill(2, 2500, 'classic invoice')
+    eq(eventCount('qb-phone:server:sendInvoice'), 1)
+    eq(stub.insertLog, nil)
+
+    Config.Insurance.enabled = true
+end)
+
+test('garage menu: qb-input opens when a spot lists multiple vehicles', function()
+    setup()
+    stub.started['qb-input'] = true
+
+    local shown = nil
+    stub.registerExport('qb-input', 'ShowInput', function(_, data)
+        shown = data
+        return { vehicle = 'ambulance2' }
+    end)
+
+    -- second vehicle makes the picker open (single-vehicle spots skip it)
+    Config.Hospitals[1].garage.vehicles[2] = 'ambulance2'
+
+    startGarage()
+    local act = zoneAction('ems_garage_central', _L('target_garage'))
+    isTrue(act ~= nil, 'garage action registered')
+    act()
+
+    isTrue(shown ~= nil, 'qb-input ShowInput called')
+    eq(shown.header, Config.Hospitals[1].label)
+    eq(shown.inputs[1].options[1].value, 'ambulance')
+    eq(shown.inputs[1].options[2].value, 'ambulance2')
+
+    -- picked model reaches the spawner
+    eq(stub.spawnLog[#stub.spawnLog].model, 'ambulance2')
+
+    -- cleanup so later tests see the one-vehicle config
+    Config.Hospitals[1].garage.vehicles[2] = nil
+end)
+
+test('garage menu: ox_lib inputDialog is used when qb-input is absent (Qbox)', function()
+    setup()
+    stub.started['qb-input'] = nil
+    stub.started['ox_lib'] = true
+
+    local dialogArgs = nil
+    lib = {
+        inputDialog = function(header, rows)
+            dialogArgs = { header = header, rows = rows }
+            return { vehicle = 'ambulance2' }
+        end,
+    }
+
+    Config.Hospitals[1].garage.vehicles[2] = 'ambulance2'
+
+    startGarage()
+    zoneAction('ems_garage_central', _L('target_garage'))()
+
+    isTrue(dialogArgs ~= nil, 'lib.inputDialog called')
+    eq(dialogArgs.rows[1].type, 'select')
+    eq(dialogArgs.rows[1].options[1].value, 'ambulance')
+    eq(dialogArgs.rows[1].options[2].value, 'ambulance2')
+    eq(stub.spawnLog[#stub.spawnLog].model, 'ambulance2')
+
+    lib = nil
+    Config.Hospitals[1].garage.vehicles[2] = nil
 end)
 
 test('items: lookup falls back to ox_inventory when it is started', function()

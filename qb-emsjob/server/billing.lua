@@ -57,6 +57,36 @@ local function ApplyInsurance(citizenid, amount)
 end
 
  ---------------------------------------------------------------------------
+ -- Society account bridge (Qbox-aware)
+ ---------------------------------------------------------------------------
+
+--- Credit the EMS society account through whichever money system is running:
+---   1. qbx_management (Qbox; the same API qbx_phone pays invoices with)
+---   2. Renewed-Banking (common on Qbox and modern QBCore stacks)
+---   3. qb-management legacy event (classic QBCore)
+--- Returns true when a known system accepted the credit.
+local function bridgeSociety(amount)
+    if GetResourceState('qbx_management') == 'started' then
+        local ok = pcall(function()
+            exports.qbx_management:AddMoney(Config.SocietyAccount, amount)
+        end)
+        if ok then return true end
+    end
+    if GetResourceState('Renewed-Banking') == 'started' then
+        local ok = pcall(function()
+            exports['Renewed-Banking']:addAccountMoney(Config.SocietyAccount, amount)
+        end)
+        if ok then return true end
+    end
+    -- Classic QBCore: fire-and-forget event. TriggerEvent errors only when a
+    -- handler itself throws, so a successful pcall means the credit was sent.
+    local ok = pcall(function()
+        TriggerEvent('qb-management:server:addSocietyMoney', Config.SocietyAccount, amount)
+    end)
+    return ok
+end
+
+ ---------------------------------------------------------------------------
  -- Instant billing (legacy mode)
  ---------------------------------------------------------------------------
 
@@ -82,9 +112,7 @@ local function chargeInstant(patientSource, amount)
     end
 
     if taken > 0 then
-        pcall(function()
-            TriggerEvent('qb-management:server:addSocietyMoney', Config.SocietyAccount, taken)
-        end)
+        bridgeSociety(taken)
     end
 
     return taken
@@ -102,20 +130,25 @@ local function sendInvoice(patientSource, amount, reason)
 
     local citizenid = Patient.PlayerData.citizenid
 
-    -- qb-phone expects: target citizenid, sender citizenid, sender label, amount, (optional) society + invoice id
-    local ok, err = pcall(function()
-        TriggerEvent('qb-phone:server:sendInvoice', citizenid, "0", Config.InvoiceSender, amount, Config.InvoiceSociety, 0, reason)
-    end)
-
-    -- qb-phone accepts a source or citizenid in the first arg on most versions;
-    -- fall back to inserting the row ourselves if the event is unavailable.
-    if not ok then
-        MySQL.insert.await(
-            'INSERT INTO phone_invoices (citizenid, amount, society, sender, reason) VALUES (?, ?, ?, ?, ?)',
-            { citizenid, amount, Config.InvoiceSociety or Config.SocietyAccount, Config.InvoiceSender, reason or 'Medical services' }
-        )
-        TriggerClientEvent('QBCore:Notify', patientSource, _L('invoice_received', { amount = amount }), 'primary', 6000)
+    -- Classic qb-phone implements the sendInvoice event; prefer it there.
+    if GetResourceState('qb-phone') == 'started' then
+        -- qb-phone expects: target citizenid, sender citizenid, sender label,
+        -- amount, (optional) society + invoice id
+        local ok = pcall(function()
+            TriggerEvent('qb-phone:server:sendInvoice', citizenid, "0", Config.InvoiceSender, amount, Config.InvoiceSociety, 0, reason)
+        end)
+        if ok then return amount end
     end
+
+    -- qbx_phone has no sendInvoice event (its /bill writes phone_invoices
+    -- directly and PayInvoice reads the same table), and with no phone at all
+    -- the event would go nowhere - so insert the row ourselves, matching the
+    -- stock phone_invoices schema (no `reason` column).
+    MySQL.insert.await(
+        'INSERT INTO phone_invoices (citizenid, amount, society, sender, sendercitizenid) VALUES (?, ?, ?, ?, ?)',
+        { citizenid, amount, Config.InvoiceSociety or Config.JobName, Config.InvoiceSender, citizenid }
+    )
+    TriggerClientEvent('QBCore:Notify', patientSource, _L('invoice_received', { amount = amount }), 'primary', 6000)
 
     return amount
 end
