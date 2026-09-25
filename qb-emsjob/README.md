@@ -2,6 +2,9 @@
 
 A complete, self-contained **EMS / Paramedic job** for **QBCore and Qbox** on FiveM.
 
+> Framework integration details (detection order, event names, per-stack
+> behavior) live in [FRAMEWORKS.md](FRAMEWORKS.md).
+
 ## Features
 
 - 🚑 **Multi-hospital coverage** — Central Los Santos, Sandy Shores and Paleto Bay, all configurable
