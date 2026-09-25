@@ -2,6 +2,15 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.4.3] - 2026-09-25
+
+### Changed
+- 10-8 (available) status is green everywhere: the roster status chip and the
+  selected 10-8 button use the same green as ox_lib success notifications
+  (`--green` / `--green-bright`), so at-a-glance status reads green = available,
+  amber = busy, red = out of service, gray = out of service chip in the roster,
+  and the dim red chip means off duty.
+
 ## [1.4.2] - 2026-09-25
 
 ### Changed

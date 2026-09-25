@@ -12,6 +12,8 @@
     --red: #e05252;
     --amber: #e0a752;
     --gray: #8b84a3;
+    --green: #26b57f;
+    --green-bright: #7ce3bd;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -168,8 +170,9 @@ body {
 .status-btn:hover { border-color: var(--accent); background: #2b2144; }
 .status-btn:active { transform: translateY(1px); }
 
+/* 10-8 is semantically green, matching the roster chip and ox success color. */
 .status-btn.selected.available,
-.status-btn[data-status="available"].selected { background: var(--accent); border-color: var(--accent); color: #150d28; }
+.status-btn[data-status="available"].selected { background: var(--green); border-color: var(--green); color: #072016; }
 
 .status-btn[data-status="busy"].selected { background: var(--amber); border-color: var(--amber); color: #241a05; }
 
@@ -240,7 +243,7 @@ body {
     letter-spacing: 0.5px;
 }
 
-.roster-status.available { background: rgba(139, 92, 246, 0.18); color: var(--accent-bright); }
+.roster-status.available { background: rgba(38, 181, 127, 0.16); color: var(--green-bright); }
 .roster-status.busy { background: rgba(224, 167, 82, 0.18); color: var(--amber); }
 .roster-status.outofservice { background: rgba(107, 114, 128, 0.25); color: var(--gray); }
 .roster-status.offduty { background: rgba(224, 82, 82, 0.15); color: var(--red); }
