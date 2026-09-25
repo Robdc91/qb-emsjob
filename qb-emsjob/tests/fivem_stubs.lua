@@ -579,6 +579,18 @@ function TriggerServerEvent(name, ...)
     M.serverEvents[#M.serverEvents + 1] = { name = name, args = { ... } }
 end
 
+-- Resource KVP registry: SetResourceKvp writes to disk in FiveM, so menu
+-- state saved here survives a full client restart (statebags do not).
+M.kvp = {}
+
+function SetResourceKvp(key, value)
+    M.kvp[key] = value
+end
+
+function GetResourceKvp(key)
+    return M.kvp[key]
+end
+
 function SendNUIMessage(msg)
     M.nuiMessages[#M.nuiMessages + 1] = msg
 end
@@ -782,6 +794,7 @@ function M.reset()
     -- working after setup() (e.g. the duty menu 'close' used to reset state).
     M.nuiFocus = { focused = false, keepInput = false }
     M.serverEvents = {}
+    M.kvp = {}
     M.statebagLog = {}
     M.notifyLog = nil
     M.localSource = nil

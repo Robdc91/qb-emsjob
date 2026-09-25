@@ -757,6 +757,46 @@ test('duty menu: off-duty EMS still opens the menu', function()
     eq(lastNui('open').state.onDuty, false)
 end)
 
+-- KVP restore must be tested BEFORE any test saves menu state: once the
+-- save path runs, the controller's session memory is non-nil and the KVP
+-- read branch is skipped for the rest of the process.
+test('duty menu: KVP persistence restores state after a full client restart', function()
+    setup()
+    -- Simulate the previous session having saved a status + call-sign:
+    -- after a full restart the statebag is empty but the KVPs remain.
+    stub.kvp['ems_status'] = 'busy'
+    stub.kvp['ems_callsign'] = 'M-99'
+
+    OpenDutyMenu()
+    local msg = lastNui('open')
+    eq(msg.state.status, 'busy')
+    eq(msg.state.callsign, 'M-99')
+
+    -- a fresh save re-persists through the same path (status as-is,
+    -- call-sign uppercased)
+    stub.invokeNui('save', { status = 'outofservice', callsign = 'm-1' })
+    eq(stub.kvp['ems_status'], 'outofservice')
+    eq(stub.kvp['ems_callsign'], 'M-1')
+
+    -- and clearing the status also clears the KVP (nil round-trip)
+    stub.invokeNui('save', { status = nil, callsign = '' })
+    eq(stub.kvp['ems_status'], nil)
+    eq(stub.kvp['ems_callsign'], '')
+end)
+
+test('duty menu: statebag wins over KVP after a resource restart', function()
+    setup()
+    stub.kvp['ems_status'] = 'busy'
+    stub.kvp['ems_callsign'] = 'M-99'
+    LocalPlayer.state.emsStatus = 'outofservice'   -- newer resource-restart state
+    LocalPlayer.state.emsCallsign = 'M-11'
+
+    OpenDutyMenu()
+    local msg = lastNui('open')
+    eq(msg.state.status, 'outofservice')
+    eq(msg.state.callsign, 'M-11')
+end)
+
 test('duty menu: close NUI callback releases focus and clears roster pushes', function()
     setup()
     OpenDutyMenu()

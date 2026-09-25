@@ -10,6 +10,19 @@ local myStatus = nil     -- 'available' | 'busy' | 'outofservice'
 local myCallsign = ''
 local lastRoster = {}    -- latest roster; refreshed on every push/callback, even when closed
 
+-- Resource KVPs persist to disk on the client, so the saved status and
+-- call-sign survive a FULL client restart (statebags only survive resource
+-- restarts). They are re-read on every open; fresher sources (session
+-- memory, then the statebag) always win below.
+local function loadPersistedState()
+    if myStatus == nil then
+        myStatus = GetResourceKvp('ems_status')
+    end
+    if myCallsign == '' then
+        myCallsign = GetResourceKvp('ems_callsign') or ''
+    end
+end
+
  ---------------------------------------------------------------------------
  -- NUI helpers
  ---------------------------------------------------------------------------
@@ -44,7 +57,9 @@ function OpenDutyMenu()
         return
     end
 
-    -- Restore persisted status from statebag (survives resource restarts)
+    -- Restore persisted status: session memory first, then the statebag
+    -- (resource restarts), with KVPs (full client restarts) filling gaps.
+    loadPersistedState()
     local st = LocalPlayer.state
     if st.emsStatus then myStatus = st.emsStatus end
     if st.emsCallsign then myCallsign = st.emsCallsign end
@@ -99,6 +114,8 @@ RegisterNUICallback('save', function(data, cb)
 
     LocalPlayer.state:set('emsStatus', myStatus, true)
     LocalPlayer.state:set('emsCallsign', myCallsign, true)
+    SetResourceKvp('ems_status', myStatus)
+    SetResourceKvp('ems_callsign', myCallsign)
 
     TriggerServerEvent('qb-emsjob:server:SetDutyStatus', myStatus, myCallsign)
     EMSNotify(_L('status_saved'), 'success')

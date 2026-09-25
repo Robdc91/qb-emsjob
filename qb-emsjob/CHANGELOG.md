@@ -2,6 +2,15 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.3.2] - 2026-09-25
+
+### Added
+- Duty menu status and call-sign now persist via client resource KVPs, so
+  they survive a full client restart (statebags only survive resource
+  restarts; the statebag still wins when both exist). Includes a browser
+  dev harness (`html/dev-harness.html`) for the duty menu NUI with an
+  on-duty/off-duty scenario switch.
+
 ## [1.3.1] - 2026-09-25
 
 ### Fixed
