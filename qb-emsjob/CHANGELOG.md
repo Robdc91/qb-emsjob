@@ -2,6 +2,14 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.4.7] - 2026-09-25
+
+### Changed
+- The duty menu card itself now uses a vertical dark-green -> light-green
+  gradient (`#0b3d24` through `#26a65b` to `#a3e4c1`). Header, section titles,
+  labels and separators switched to light-on-green styling; roster rows,
+  inputs and buttons stay light cards so text contrast holds everywhere.
+
 ## [1.4.6] - 2026-09-25
 
 ### Changed

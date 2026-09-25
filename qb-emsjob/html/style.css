@@ -47,7 +47,8 @@ body {
     max-height: min(640px, calc(100vh - 16px));
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, #ffffff 0%, #f0faf4 55%, #ffffff 100%);
+    /* Dark green -> light green gradient body */
+    background: linear-gradient(180deg, #0b3d24 0%, #26a65b 60%, #a3e4c1 100%);
     border: 1px solid var(--accent-glow);
     border-radius: 12px;
     box-shadow: 0 18px 50px rgba(16, 36, 26, 0.18), 0 0 34px rgba(38, 166, 91, 0.2);
@@ -60,8 +61,8 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    background: linear-gradient(90deg, rgba(38, 166, 91, 0.22) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0) 55%, rgba(38, 166, 91, 0.22) 100%), var(--panel);
-    border-bottom: 1px solid var(--line);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.1) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .header-left {
@@ -71,7 +72,7 @@ body {
     font-size: 15px;
     font-weight: 700;
     letter-spacing: 2px;
-    color: var(--accent);
+    color: #eafaf0;
 }
 
 .close-btn {
@@ -79,8 +80,8 @@ body {
     height: 30px;
     border: none;
     border-radius: 8px;
-    background: var(--panel-2);
-    color: var(--muted);
+    background: rgba(255, 255, 255, 0.12);
+    color: #eafaf0;
     cursor: pointer;
     transition: all 0.15s ease;
 }
@@ -91,7 +92,7 @@ body {
 /* Sections */
 .section {
     padding: 14px 16px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .section:last-of-type { border-bottom: none; }
@@ -105,14 +106,14 @@ body {
     font-weight: 700;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .count {
     padding: 1px 8px;
     border-radius: 10px;
-    background: var(--accent);
-    color: #fff;
+    background: #fff;
+    color: var(--accent-dim);
     font-size: 11px;
 }
 
@@ -126,7 +127,7 @@ body {
 
 .callsign-row label {
     font-size: 12px;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.8);
     min-width: 60px;
 }
 
@@ -251,8 +252,8 @@ body {
     padding: 14px;
     text-align: center;
     font-size: 12px;
-    color: var(--muted);
-    border: 1px dashed var(--line);
+    color: rgba(255, 255, 255, 0.75);
+    border: 1px dashed rgba(255, 255, 255, 0.3);
     border-radius: 8px;
 }
 
@@ -261,11 +262,11 @@ body {
     display: flex;
     justify-content: flex-end;
     padding: 10px 16px;
-    background: linear-gradient(90deg, rgba(38, 166, 91, 0.22) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0) 55%, rgba(38, 166, 91, 0.22) 100%), var(--panel);
-    border-top: 1px solid var(--line);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.12) 100%);
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-.footer-hint { font-size: 11px; color: var(--muted); }
+.footer-hint { font-size: 11px; color: #2c5c42; }
 
 kbd {
     padding: 2px 6px;
