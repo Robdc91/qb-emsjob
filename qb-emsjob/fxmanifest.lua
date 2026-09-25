@@ -5,7 +5,7 @@ lua54 'yes'
 name 'qb-emsjob'
 description 'EMS/Paramedic job for QBCore: revive & heal players, ambulance garage, duty points, first-aid items'
 author 'Buffy'
-version '1.3.3'
+version '1.3.4'
 
 ui_page 'html/index.html'
 

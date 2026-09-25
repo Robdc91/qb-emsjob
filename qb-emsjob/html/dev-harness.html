@@ -19,8 +19,8 @@
             top: 12px;
             right: 12px;
             width: 250px;
-            background: #0f1218;
-            border: 1px solid var(--line);
+            background: #100b1a;
+            border: 1px solid var(--accent-glow);
             border-radius: 10px;
             padding: 12px;
             font-family: 'Segoe UI', sans-serif;
@@ -81,7 +81,14 @@
         }
         #harness-log .cb { color: var(--amber); }
         #harness-log .msg { color: var(--accent); }
-        #app-preview-bg { background: #232834; }
+        #app-preview-bg {
+            background: linear-gradient(
+                90deg,
+                #241a3f 0%,
+                #0b0713 50%,
+                #241a3f 100%
+            );
+        }
     </style>
 </head>
 <body id="app-preview-bg">

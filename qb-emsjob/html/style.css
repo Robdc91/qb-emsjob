@@ -1,15 +1,17 @@
 :root {
-    --bg: #14171f;
-    --panel: #1c2029;
-    --panel-2: #232834;
-    --line: #2e3440;
-    --text: #e8eaf0;
-    --muted: #8b93a7;
-    --accent: #26b57f;
-    --accent-dim: #1f9668;
+    --bg: #141020;
+    --panel: #1b1429;
+    --panel-2: #251b3a;
+    --line: #342652;
+    --text: #eae6f5;
+    --muted: #9c90bb;
+    --accent: #8b5cf6;
+    --accent-dim: #7443e6;
+    --accent-bright: #c0aaff;
+    --accent-glow: rgba(139, 92, 246, 0.35);
     --red: #e05252;
     --amber: #e0a752;
-    --gray: #6b7280;
+    --gray: #8b84a3;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,7 +32,13 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.45);
+    /* Purple -> black -> purple gradient backdrop */
+    background: linear-gradient(
+        90deg,
+        rgba(139, 92, 246, 0.38) 0%,
+        rgba(8, 5, 14, 0.82) 50%,
+        rgba(139, 92, 246, 0.38) 100%
+    );
 }
 
 .container {
@@ -38,10 +46,10 @@ body {
     max-height: min(640px, calc(100vh - 16px));
     display: flex;
     flex-direction: column;
-    background: var(--bg);
-    border: 1px solid var(--line);
+    background: linear-gradient(180deg, #1e1535 0%, #120c1f 55%, #1a1230 100%);
+    border: 1px solid var(--accent-glow);
     border-radius: 12px;
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 34px rgba(139, 92, 246, 0.16);
     overflow: hidden;
 }
 
@@ -51,7 +59,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    background: var(--panel);
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.26) 0%, rgba(27, 20, 41, 0) 45%, rgba(27, 20, 41, 0) 55%, rgba(139, 92, 246, 0.26) 100%), var(--panel);
     border-bottom: 1px solid var(--line);
 }
 
@@ -103,7 +111,7 @@ body {
     padding: 1px 8px;
     border-radius: 10px;
     background: var(--accent);
-    color: #0c1210;
+    color: #150d28;
     font-size: 11px;
 }
 
@@ -135,7 +143,7 @@ body {
 
 #callsign-input:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(38, 181, 127, 0.22);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.28);
 }
 
 /* Status buttons */
@@ -157,11 +165,11 @@ body {
     transition: all 0.15s ease;
 }
 
-.status-btn:hover { border-color: var(--accent); background: #2a3040; }
+.status-btn:hover { border-color: var(--accent); background: #2b2144; }
 .status-btn:active { transform: translateY(1px); }
 
 .status-btn.selected.available,
-.status-btn[data-status="available"].selected { background: var(--accent); border-color: var(--accent); color: #0c1210; }
+.status-btn[data-status="available"].selected { background: var(--accent); border-color: var(--accent); color: #150d28; }
 
 .status-btn[data-status="busy"].selected { background: var(--amber); border-color: var(--amber); color: #241a05; }
 
@@ -172,7 +180,7 @@ body {
 .status-btn.primary {
     background: var(--accent);
     border-color: var(--accent);
-    color: #0c1210;
+    color: #150d28;
 }
 
 .status-btn.primary:hover { background: var(--accent-dim); }
@@ -188,7 +196,7 @@ body {
 }
 
 .roster::-webkit-scrollbar { width: 4px; }
-.roster::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+.roster::-webkit-scrollbar-thumb { background: var(--accent-glow); border-radius: 2px; }
 
 .roster-item {
     display: flex;
@@ -202,7 +210,7 @@ body {
 
 .roster-item.self { border-color: var(--accent); }
 
-.roster-item:not(.self):hover { border-color: #3a4150; background: var(--panel-2); }
+.roster-item:not(.self):hover { border-color: #453464; background: var(--panel-2); }
 
 .roster-callsign {
     min-width: 46px;
@@ -232,7 +240,7 @@ body {
     letter-spacing: 0.5px;
 }
 
-.roster-status.available { background: rgba(38, 181, 127, 0.18); color: var(--accent); }
+.roster-status.available { background: rgba(139, 92, 246, 0.18); color: var(--accent-bright); }
 .roster-status.busy { background: rgba(224, 167, 82, 0.18); color: var(--amber); }
 .roster-status.outofservice { background: rgba(107, 114, 128, 0.25); color: var(--gray); }
 .roster-status.offduty { background: rgba(224, 82, 82, 0.15); color: var(--red); }
@@ -251,7 +259,7 @@ body {
     display: flex;
     justify-content: flex-end;
     padding: 10px 16px;
-    background: var(--panel);
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.26) 0%, rgba(27, 20, 41, 0) 45%, rgba(27, 20, 41, 0) 55%, rgba(139, 92, 246, 0.26) 100%), var(--panel);
     border-top: 1px solid var(--line);
 }
 

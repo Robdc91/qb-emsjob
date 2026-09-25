@@ -2,6 +2,13 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.3.4] - 2026-09-25
+
+### Changed
+- Duty menu rethemed to a purple accent palette with a purple-black-purple
+  gradient backdrop, gradient container/header/footer, and purple glow
+  highlights; status chips keep their distinct hues (purple/amber/gray/red).
+
 ## [1.3.3] - 2026-09-25
 
 ### Changed
