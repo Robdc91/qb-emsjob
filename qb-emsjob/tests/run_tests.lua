@@ -10,6 +10,7 @@
       - useable item registration (server/items.lua)
       - duty menu NUI controller (client/duty_menu.lua) via statebag + NUI stubs
       - garage controller (client/garage.lua) via qb-target + vehicle stubs
+      - revive/laststand controller (client/revive.lua) with fake-time thread stepping
 
     Run:  lua tests/run_tests.lua
 ]]
@@ -71,6 +72,7 @@ Config.EnableBlips = false
 dofile('client/main.lua')
 dofile('client/duty_menu.lua')
 dofile('client/garage.lua')
+dofile('client/revive.lua')
 
  ---------------------------------------------------------------------------
  -- Helpers
@@ -1002,6 +1004,202 @@ test('garage: resource stop removes the registered zones', function()
     eq(stub.zones['ems_garage_central'], nil)
     eq(stub.zones['ems_heli_central'], nil)
     isTrue(#stub.removedZones >= 5, 'duty + garage + helipad zones removed')
+end)
+
+ ---------------------------------------------------------------------------
+ -- Revive / laststand controller (client/revive.lua)
+ ---------------------------------------------------------------------------
+
+local function serverEventCount(name)
+    local n = 0
+    for _, e in ipairs(stub.serverEvents) do
+        if e.name == name then n = n + 1 end
+    end
+    return n
+end
+
+--- Resume parked threads. passes=1 is the steady-state tick (one loop
+--- iteration per fake second); the initial step after firing an event uses
+--- extra passes so nested CreateThread bodies (e.g. the countdown thread
+--- spawned by enterLaststand inside the death-watch pass) get their first run.
+local function stepThreads(passes)
+    for _ = 1, passes or 1 do
+        stub.resumeThreads()
+    end
+end
+
+test('revive: entering laststand replicates the countdown and alerts EMS', function()
+    setup()
+    stub.peds[1].dead = true
+
+    stepThreads(3)
+
+    local ls = LocalPlayer.state.laststand
+    isTrue(type(ls) == 'number' and ls > 0 and ls <= 300, 'laststand countdown replicated')
+    eq(serverEventCount('qb-emsjob:server:PlayerDowned'), 1)
+    local blips = 0
+    for _ in pairs(stub.blips) do blips = blips + 1 end
+    eq(blips, 1) -- flashing downed blip on own position
+end)
+
+test('revive: the bleed-out countdown drains with fake time and kills at zero', function()
+    setup()
+    stub.peds[1].dead = true
+    stepThreads(3)
+
+    -- one fake second per pass: the initial 3-pass step already burned two
+    -- countdown iterations (300 -> 298), so state hits 1 after 297 ticks;
+    -- the 298th tick trips the bleed-out branch
+    for _ = 1, 297 do
+        stub.advanceTime(1000)
+        stepThreads()
+    end
+    eq(LocalPlayer.state.laststand, 1)
+
+    stub.advanceTime(1000)
+    stepThreads()
+
+    -- bled out: downed state cleared, fully dead
+    eq(LocalPlayer.state.laststand, false)
+    eq(LocalPlayer.state.isdead, true)
+end)
+
+test('revive: being revived clears downed state and restores the ped', function()
+    setup()
+    stub.peds[1].dead = true
+    stepThreads(3)
+    LocalPlayer.state.isdead = true
+
+    stub.fireEvent('qb-emsjob:client:Revived', 1, 2500)
+
+    eq(LocalPlayer.state.laststand, false)
+    eq(LocalPlayer.state.isdead, false)
+    eq(stub.peds[1].dead, false)   -- went through NetworkResurrectLocalPlayer
+    eq(stub.peds[1].health, 200)
+    isTrue(stub.notifyLog[#stub.notifyLog].msg:find('You were revived by EMS', 1, true) ~= nil, 'revived notify')
+end)
+
+test('revive: holding E respawns at the nearest hospital and bills', function()
+    setup()
+    stub.peds[1].dead = true
+    stepThreads(3)
+    LocalPlayer.state.isdead = true
+    LocalPlayer.state.laststand = false
+    stub.advanceTime(0) -- pin the hold timer to fake time before it starts
+
+    stub.holdE = true
+    -- hold accumulates across ticks; the strict >3000ms threshold trips on
+    -- tick 5 (captured at t=1000, exceeded at t=5000), and respawn's two
+    -- internal Wait(500) calls need two more ticks
+    for _ = 1, 8 do
+        stub.advanceTime(1000)
+        stepThreads()
+    end
+
+    eq(stub.peds[1].coords.x, 295.83) -- central hospital respawn point
+    eq(stub.peds[1].coords.y, -1446.96)
+    eq(stub.peds[1].dead, false)
+    eq(stub.peds[1].health, 150)      -- respawn restores at reduced health
+    eq(serverEventCount('qb-emsjob:server:RespawnBilled'), 1)
+end)
+
+test('revive: releasing E cancels the respawn hold', function()
+    setup()
+    stub.peds[1].dead = true
+    stepThreads(3)
+    LocalPlayer.state.isdead = true
+    LocalPlayer.state.laststand = false
+    stub.advanceTime(0) -- pin the hold timer to fake time before it starts
+
+    stub.holdE = true
+    stub.advanceTime(2000)
+    stepThreads()
+    stub.holdE = false
+    stub.advanceTime(5000)
+    stepThreads()
+
+    eq(serverEventCount('qb-emsjob:server:RespawnBilled'), 0)
+    eq(stub.peds[1].coords.x, 0) -- never teleported
+end)
+
+test('revive: on-duty EMS gets target options on a nearby downed player', function()
+    setup()
+    stub.remoteStates[2] = { laststand = 120 }
+    stub.setPed(2, V(3, 0, 0), 0)
+
+    stepThreads()
+
+    local tgt = stub.entityTargets[2]
+    isTrue(tgt ~= nil, 'target options attached to the downed ped')
+    isTrue(#tgt.options >= 2, 'revive + heal options present')
+    eq(tgt.distance, Config.ReviveDistance)
+
+    -- once the player is no longer nearby, the options are removed again
+    stub.setPed(2, V(500, 0, 0), 0)
+    stepThreads()
+    eq(stub.entityTargets[2], nil)
+    isTrue(#stub.removedEntityTargets >= 1, 'stale target removed')
+end)
+
+test('revive: starting a revive runs the progress bar and signals the server', function()
+    setup()
+    stub.remoteStates[2] = { laststand = 120 }
+    stub.setPed(2, V(3, 0, 0), 0)
+    stepThreads()
+
+    local action
+    for _, opt in ipairs(stub.entityTargets[2].options) do
+        if opt.label == _L('target_revive') then action = opt.action end
+    end
+    isTrue(action ~= nil)
+
+    stub.advanceTime(0) -- enable fake time so the progress bar completes
+    stub.runInThread(action)
+    stub.advanceTime(6000)
+    stepThreads(2) -- pass 1 finishes the progress bar, pass 2 releases the waiter
+
+    eq(serverEventCount('qb-emsjob:server:RevivePlayer'), 1)
+    eq(stub.serverEvents[#stub.serverEvents].args[1], 2)
+end)
+
+test('revive: healing a downed player redirects to the revive flow', function()
+    setup()
+    stub.remoteStates[2] = { laststand = 90 }
+    stub.setPed(2, V(3, 0, 0), 0)
+    stepThreads()
+
+    local action
+    for _, opt in ipairs(stub.entityTargets[2].options) do
+        if opt.label == _L('target_heal') then action = opt.action end
+    end
+
+    stub.advanceTime(0)
+    stub.runInThread(action)
+    stub.advanceTime(6000)
+    stepThreads(2) -- pass 1 finishes the progress bar, pass 2 releases the waiter
+
+    eq(serverEventCount('qb-emsjob:server:RevivePlayer'), 1)
+    eq(serverEventCount('qb-emsjob:server:HealPlayer'), 0)
+end)
+
+test('revive: bandage heals, starts a cooldown and is refused while downed', function()
+    setup()
+    LocalPlayer.state.laststand = 120
+    stub.runInThread(function() stub.fireEvent('qb-emsjob:client:UseBandage', 1) end)
+    isTrue(stub.notifyLog[#stub.notifyLog].msg:find('cannot use this right now', 1, true) ~= nil, 'refused while downed')
+
+    setup() -- clears the downed state
+    stub.advanceTime(0)
+    stub.runInThread(function() stub.fireEvent('qb-emsjob:client:UseBandage', 1) end)
+    stub.advanceTime(6000)
+    stepThreads(2) -- pass 1 finishes the progress bar, pass 2 releases the waiter
+
+    eq(stub.peds[1].health, 200) -- clamped to max health
+    isTrue(stub.notifyLog[#stub.notifyLog].msg:find('You feel a little better', 1, true) ~= nil, 'self-heal notify')
+
+    -- second use inside the cooldown window is rejected
+    stub.runInThread(function() stub.fireEvent('qb-emsjob:client:UseBandage', 1) end)
+    isTrue(stub.notifyLog[#stub.notifyLog].msg:find('recently treated', 1, true) ~= nil, 'cooldown notify')
 end)
 
  ---------------------------------------------------------------------------

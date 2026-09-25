@@ -419,33 +419,107 @@ function QBCoreStub.Functions.GetPlate(veh)
 end
 
  ---------------------------------------------------------------------------
+ -- Death / health / anim / task natives (client/revive.lua)
+ ---------------------------------------------------------------------------
+
+function IsEntityDead(ped)
+    local p = M.peds[ped]
+    if p and p.dead ~= nil then return p.dead end
+    return false
+end
+
+function NetworkResurrectLocalPlayer(x, y, z, heading, unk, unk2)
+    local ped = PlayerPedId()
+    local p = M.peds[ped]
+    if p then
+        p.dead = false
+        p.coords = M.vector3(x, y, z)
+    end
+end
+
+function ClearPedTasks() end
+function StopAnimTask() end
+
+function SetEntityInvincible(ped, inv) end
+
+function SetEntityHealth(ped, health)
+    local p = M.peds[ped]
+    if p then p.health = health end
+end
+
+function GetEntityMaxHealth(ped)
+    return 200
+end
+
+function RemoveAllPedWeapons() end
+
+function GiveWeaponToPed() end
+
+function SetCurrentPedWeapon() end
+
+function RequestAnimDict() end
+function HasAnimDictLoaded() return true end
+
+function TaskPlayAnim() end
+
+function GetEntityHeading(ped)
+    local p = M.peds[ped]
+    return p and p.heading or 0.0
+end
+
+function SetEntityCoords(ped, x, y, z)
+    local p = M.peds[ped]
+    if p then p.coords = M.vector3(x, y, z) end
+end
+
+ ---------------------------------------------------------------------------
  -- Misc natives / globals
  ---------------------------------------------------------------------------
 
---- CreateThread runs the body as a coroutine: it executes until the first
---- Wait() and then suspends, so load-time loop threads (e.g. the client
---- interaction loops) park instead of hanging the test process.
+--- Threads run as coroutines: a body executes until its first Wait() and
+--- then suspends, so load-time loops (client interaction threads) park
+--- instead of hanging the test process. Drive them with resumeThreads().
 M.threads = {}
 
-function CreateThread(fn)
+--- Run fn in a registered coroutine so it may Wait()/yield like a thread.
+--- Also how tests invoke handlers that block on a progress bar.
+function M.runInThread(fn, ...)
     local co = coroutine.create(fn)
     M.threads[#M.threads + 1] = co
-    local ok, err = coroutine.resume(co)
+    local ok, err = coroutine.resume(co, ...)
     if not ok then error(err, 0) end
+    return co
 end
+
+function CreateThread(fn) return M.runInThread(fn) end
 
 --- Yield the calling thread (FiveM semantics); resumable via M.resumeThreads().
 function Wait(ms)
     coroutine.yield(ms)
 end
 
+--- Controllable clock: tests enable fake time with M.advanceTime(ms) and
+--- step threads deterministically; without it, wall clock is used.
+M.useFakeTime = false
+M.fakeTime = 0
+
 function GetGameTimer()
+    if M.useFakeTime then return M.fakeTime end
     return math.floor(os.clock() * 1000)
 end
 
---- Resume every suspended thread once (for future timer-stepping tests).
+function M.advanceTime(ms)
+    M.useFakeTime = true
+    M.fakeTime = M.fakeTime + ms
+end
+
+--- Resume every parked thread once. Snapshot the list first: resuming can
+--- create new threads (nested CreateThread), which get their first run on
+--- the next pass.
 function M.resumeThreads()
-    for _, co in ipairs(M.threads) do
+    local snapshot = {}
+    for i, co in ipairs(M.threads) do snapshot[i] = co end
+    for _, co in ipairs(snapshot) do
         if coroutine.status(co) == 'suspended' then
             local ok, err = coroutine.resume(co)
             if not ok then error(err, 0) end
@@ -542,6 +616,21 @@ M.registerExport('qb-target', 'RemoveZone', function(_, name)
     M.zones[name] = nil
 end)
 
+M.entityTargets = {}   -- [pedHandle] = { options, distance }
+M.removedEntityTargets = {}
+
+M.registerExport('qb-target', 'AddTargetEntity', function(_, ped, config)
+    M.entityTargets[ped] = {
+        options = config and config.options or {},
+        distance = config and config.distance or nil,
+    }
+end)
+
+M.registerExport('qb-target', 'RemoveTargetEntity', function(_, ped)
+    M.removedEntityTargets[#M.removedEntityTargets + 1] = ped
+    M.entityTargets[ped] = nil
+end)
+
  ---------------------------------------------------------------------------
  -- Blip natives + timers: the client DownedAlert handler runs when the
  -- server alert is delivered in-process via TriggerClientEvent, and it
@@ -587,6 +676,49 @@ end
 
 function IsControlJustReleased(pad, control) return false end
 
+function IsControlPressed(pad, control)
+    return M.holdE == true and control == 38
+end
+
+function DoScreenFadeOut(ms) end
+function DoScreenFadeIn(ms) end
+
+--- Remote player reads: Player(serverId).state for replicated downed state.
+M.remoteStates = {}
+
+function Player(serverId)
+    local sid = tonumber(serverId)
+    return {
+        state = setmetatable({}, {
+            __index = function(_, k)
+                local rs = M.remoteStates[sid]
+                if rs then return rs[k] end
+                return nil
+            end,
+        }),
+    }
+end
+
+function GetActivePlayers()
+    local list = {}
+    for sid in pairs(M.remoteStates) do
+        list[#list + 1] = sid
+    end
+    return list
+end
+
+function GetPlayerFromServerId(serverId)
+    return tonumber(serverId) or -1
+end
+
+function GetPlayerServerId(player)
+    return tonumber(player) or -1
+end
+
+function DoesEntityExist(ped)
+    return M.peds[ped] ~= nil
+end
+
 function SetTextScale() end
 function SetTextFont() end
 function SetTextProportional() end
@@ -609,7 +741,10 @@ function M.reset()
     M.insertLog = nil
     M.db.insurance = {}
     M.peds = {}
-    M.threads = {}
+    -- NOTE: M.threads intentionally survives reset, like M.callbacks and
+    -- M.nuiCallbacks: the load-time death-watch thread (client/revive.lua)
+    -- must stay resumable across tests. Stale per-test threads are inert —
+    -- their loop conditions read reset state and they exit on next resume.
     M.blips = {}
     M.timers = {}
     M.vehicles = {}
@@ -619,7 +754,17 @@ function M.reset()
     M.warped = nil
     M.zones = {}
     M.removedZones = {}
-    M.nuiMessages = {}
+    M.entityTargets = {}
+    M.removedEntityTargets = {}
+    M.holdE = false
+    M.remoteStates = {}
+    M.useFakeTime = false
+    M.fakeTime = 0
+    statebag['emsStatus'] = nil
+    statebag['emsCallsign'] = nil
+    statebag['laststand'] = nil
+    statebag['isdead'] = nil
+    _G.source = 0
     -- NOTE: nuiCallbacks intentionally survive reset, like M.callbacks and
     -- M.useableItems: load-time RegisterNUICallback registrations must keep
     -- working after setup() (e.g. the duty menu 'close' used to reset state).

@@ -72,7 +72,7 @@ local function enterLaststand()
     laststandThreadActive = true
 
     local ped = PlayerPedId()
-    SetCurrentPedWeapon(ped, `WEAPON_UNARMED`, true)
+    SetCurrentPedWeapon(ped, joaat('WEAPON_UNARMED'), true)
     loadAnimDict('dead')
     TaskPlayAnim(ped, 'dead', 'dead_a', 8.0, 8.0, -1, 9, 0, false, false, false)
 
