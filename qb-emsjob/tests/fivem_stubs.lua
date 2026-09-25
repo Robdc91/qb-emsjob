@@ -97,9 +97,18 @@ local function record(name, target, ...)
     M.eventLog[#M.eventLog + 1] = { name = name, target = target, args = { ... } }
 end
 
--- Globals: server code calls TriggerClientEvent / TriggerEvent directly
+-- Globals: server code calls TriggerClientEvent / TriggerEvent directly.
+-- TriggerClientEvent records the send AND delivers it to any registered
+-- client handler: FiveM would network the event to that client, and here
+-- everything runs in one process, so delivery is immediate.
 function TriggerClientEvent(name, target, ...)
     record(name, target, ...)
+    local list = M.handlers[name]
+    if list then
+        for _, fn in ipairs(list) do
+            fn(...)
+        end
+    end
 end
 
 function TriggerEvent(name, ...)
@@ -428,6 +437,39 @@ function M.invokeNui(name, data)
 end
 
  ---------------------------------------------------------------------------
+ -- Blip natives + timers: the client DownedAlert handler runs when the
+ -- server alert is delivered in-process via TriggerClientEvent, and it
+ -- creates/flashes/labels a blip and schedules a removal timeout.
+ ---------------------------------------------------------------------------
+
+M.blips = {}
+M.timers = {}
+
+local nextBlipId = 1000
+
+function AddBlipForCoord(x, y, z)
+    nextBlipId = nextBlipId + 1
+    M.blips[nextBlipId] = { x = x, y = y, z = z }
+    return nextBlipId
+end
+
+function DoesBlipExist(blip) return M.blips[blip] ~= nil end
+function RemoveBlip(blip) M.blips[blip] = nil end
+function SetBlipSprite() end
+function SetBlipDisplay() end
+function SetBlipScale() end
+function SetBlipColour() end
+function SetBlipFlashes() end
+function SetBlipAsShortRange() end
+function BeginTextCommandSetBlipName() end
+function AddTextComponentSubstringPlayerName() end
+function EndTextCommandSetBlipName() end
+
+function SetTimeout(ms, fn)
+    M.timers[#M.timers + 1] = { ms = ms, fn = fn }
+end
+
+ ---------------------------------------------------------------------------
  -- Reset between tests
  ---------------------------------------------------------------------------
 
@@ -438,6 +480,8 @@ function M.reset()
     M.db.insurance = {}
     M.peds = {}
     M.threads = {}
+    M.blips = {}
+    M.timers = {}
     M.nuiMessages = {}
     -- NOTE: nuiCallbacks intentionally survive reset, like M.callbacks and
     -- M.useableItems: load-time RegisterNUICallback registrations must keep
