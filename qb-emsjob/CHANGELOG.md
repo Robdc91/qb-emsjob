@@ -2,6 +2,13 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.3.3] - 2026-09-25
+
+### Changed
+- Duty menu NUI polish: roster shows more rows before scrolling, hover and
+  pressed states on buttons/roster rows, call-sign focus ring, and responsive
+  rules so the menu adapts to narrow or short windowed resolutions.
+
 ## [1.3.2] - 2026-09-25
 
 ### Added
