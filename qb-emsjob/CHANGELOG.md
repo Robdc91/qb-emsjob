@@ -2,6 +2,13 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.4.6] - 2026-09-25
+
+### Changed
+- Duty menu backdrop is a two-stop dark-green -> lighter-green gradient
+  (`#0b3d24` to `#4ade80`) replacing the dark-green/green/white sweep; the
+  light container and green accents are unchanged.
+
 ## [1.4.5] - 2026-09-25
 
 ### Changed
