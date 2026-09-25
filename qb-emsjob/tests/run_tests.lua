@@ -769,11 +769,11 @@ test('duty menu: close NUI callback releases focus and clears roster pushes', fu
     eq(nuiCount('roster'), before)
 end)
 
-test('duty menu: open pushes state and fetches the roster via callback', function()
+test('duty menu: open embeds the cached roster and refreshes via callback', function()
     setup()
     LocalPlayer.state.emsStatus = 'available'   -- as persisted from an earlier session
     LocalPlayer.state.emsCallsign = 'M-9'
-    setStatus(1, 'available', 'M-9')
+    setStatus(1, 'available', 'M-9')            -- broadcast arrives while closed
 
     OpenDutyMenu()
     local msg = lastNui('open')
@@ -781,12 +781,17 @@ test('duty menu: open pushes state and fetches the roster via callback', functio
     eq(msg.state.callsign, 'M-9')
     eq(msg.state.onDuty, true)
 
-    local roster = lastNui('roster')
-    isTrue(roster ~= nil, 'roster forwarded to the NUI on open')
-    local me = roster.roster[1]
+    -- the open message already carries the roster: no "No colleagues" flash
+    isTrue(msg.roster ~= nil, 'open message embeds the cached roster')
+    local me = msg.roster[1]
     eq(me.callsign, 'M-9')
     eq(me.self, true) -- source came from stub.localSource
     eq(me.onDuty, true)
+
+    -- the authoritative refresh still lands right after open
+    local roster = lastNui('roster')
+    isTrue(roster ~= nil, 'roster forwarded to the NUI on open')
+    eq(roster.roster[1].callsign, 'M-9')
 end)
 
 test('duty menu: live roster broadcast updates the open menu', function()
@@ -797,10 +802,16 @@ test('duty menu: live roster broadcast updates the open menu', function()
     eq(nuiCount('roster'), before + 1)
     eq(lastNui('roster').roster[1].callsign, 'M-24')
 
-    -- and while closed, nothing is pushed
+    -- and while closed, nothing is pushed (the cache still updates)
     stub.invokeNui('close')
     setStatus(1, 'available', 'M-24')
     eq(nuiCount('roster'), before + 1)
+
+    -- reopening embeds the latest roster without waiting for the refresh
+    OpenDutyMenu()
+    eq(lastNui('open').roster[1].callsign, 'M-24')
+    eq(lastNui('open').roster[1].status, 'available')
+    eq(nuiCount('roster'), before + 2)
 end)
 
 test('duty menu: reopen restores status and callsign from the statebag', function()

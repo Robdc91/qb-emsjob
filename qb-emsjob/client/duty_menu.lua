@@ -8,6 +8,7 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local menuOpen = false
 local myStatus = nil     -- 'available' | 'busy' | 'outofservice'
 local myCallsign = ''
+local lastRoster = {}    -- latest roster; refreshed on every push/callback, even when closed
 
  ---------------------------------------------------------------------------
  -- NUI helpers
@@ -21,11 +22,12 @@ local function sendNui(action, payload)
     })
 end
 
---- Request the roster from the server and forward it to the NUI when open.
+--- Request the roster from the server, cache it and forward it when open.
 function RefreshDutyRoster()
-    if not menuOpen then return end
     QBCore.Functions.TriggerCallback('qb-emsjob:server:GetDutyRoster', function(roster)
-        if menuOpen and roster then
+        if not roster then return end
+        lastRoster = roster -- keep the cache fresh even if the menu closed
+        if menuOpen then
             sendNui('roster', { roster = roster })
         end
     end)
@@ -49,10 +51,9 @@ function OpenDutyMenu()
 
     menuOpen = true
     SetNuiFocus(true, true)
-    SendNUIMessage({
-        action = 'open',
-        state = { onDuty = OnDuty, status = myStatus, callsign = myCallsign },
-    })
+    -- Embed the cached roster so the menu never flashes an empty list while
+    -- waiting for the GetDutyRoster callback below.
+    sendNui('open', { roster = lastRoster })
     RefreshDutyRoster()
 end
 
@@ -108,7 +109,9 @@ end)
  ---------------------------------------------------------------------------
 
 RegisterNetEvent('qb-emsjob:client:RosterUpdated', function(roster)
-    if menuOpen and roster then
+    if not roster then return end
+    lastRoster = roster -- cache even when closed: the next open embeds it
+    if menuOpen then
         sendNui('roster', { roster = roster })
     end
 end)
