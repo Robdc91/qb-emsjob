@@ -81,6 +81,45 @@
         }
         #harness-log .cb { color: var(--amber); }
         #harness-log .msg { color: var(--accent); }
+        #harness-log .notify { color: var(--accent-bright, #c0aaff); }
+
+        /* Toast host: renders feedback in the active framework's style */
+        #harness-toasts {
+            position: fixed;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 10000;
+            width: 340px;
+        }
+        .qb-toast {
+            background: rgba(40, 30, 66, 0.98);
+            border: 1px solid var(--accent);
+            border-left: 3px solid var(--accent-bright, #c0aaff);
+            border-radius: 4px;
+            padding: 10px 12px;
+            color: #f2eefc;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 12px;
+            box-shadow: 0 0 14px rgba(139, 92, 246, 0.45), 0 6px 18px rgba(0,0,0,0.5);
+        }
+        .ox-toast {
+            background: rgba(40, 30, 66, 0.98);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #f2eefc;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 12px;
+            box-shadow: 0 0 14px rgba(139, 92, 246, 0.45), 0 6px 18px rgba(0,0,0,0.5);
+        }
+        .ox-toast.success { border-left: 3px solid #26b57f; }
+        .ox-toast.error   { border-left: 3px solid var(--red); }
+        .ox-toast.primary { border-left: 3px solid var(--accent); }
+        .ox-toast .ox-title { font-weight: 700; font-size: 11px; letter-spacing: 0.5px; margin-bottom: 2px; color: var(--muted); }
         #app-preview-bg {
             background: linear-gradient(
                 90deg,
@@ -161,6 +200,18 @@
             <option value="outofservice">outofservice</option>
         </select>
         <button data-send="state">Send state</button>
+        <label>Framework mode</label>
+        <select id="fw-mode">
+            <option value="qb">QBCore (qb-core notify)</option>
+            <option value="ox">Qbox (ox_lib toasts)</option>
+        </select>
+        <label>Simulate latency</label>
+        <select id="latency-mode">
+            <option value="fast">Fast (instant callbacks)</option>
+            <option value="slow">Slow (1.5s roster callback)</option>
+        </select>
+        <button data-send="slowOpen">Send open (slow server)</button>
+        <div id="harness-toasts"></div>
         <div id="harness-log"></div>
     </div>
 

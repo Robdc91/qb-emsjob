@@ -50,7 +50,7 @@ Tests exit non-zero on failure, so they drop straight into CI.
 
 ### NUI dev harness
 
-Open `html/dev-harness.html` in a browser to click through the duty menu outside the game. It loads the real `style.css` + `script.js`, drives them with mock `open` / `roster` / `state` messages from a side panel (including the empty-roster flash that 1.3.1 fixed and an on-duty/off-duty switch that re-renders the duty button, self roster chip and on-duty count), and logs the NUI callbacks the UI posts back (`close`, `toggleDuty`, `save`). The harness is not listed in `fxmanifest.lua`'s `files {}`, so FiveM never ships or loads it.
+Open `html/dev-harness.html` in a browser to click through the duty menu outside the game. It loads the real `style.css` + `script.js`, drives them with mock `open` / `roster` / `state` messages from a side panel (including the empty-roster flash that 1.3.1 fixed, an on-duty/off-duty switch that re-renders the duty button, self roster chip and on-duty count, and a slow-server scenario showing the embedded roster beating callback latency), and logs the NUI callbacks the UI posts back (`close`, `toggleDuty`, `save`). A framework-mode switch previews feedback in each stack's style — qb-core notify lines vs ox_lib toasts — and a latency selector slows the simulated Lua responses. The harness is not listed in `fxmanifest.lua`'s `files {}`, so FiveM never ships or loads it.
 
 ## Dependencies
 
