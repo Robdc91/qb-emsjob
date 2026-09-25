@@ -34,12 +34,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Green -> white -> green gradient backdrop */
+    /* Dark green -> green -> white gradient backdrop */
     background: linear-gradient(
         90deg,
-        rgba(38, 166, 91, 0.38) 0%,
-        rgba(255, 255, 255, 0.85) 50%,
-        rgba(38, 166, 91, 0.38) 100%
+        rgba(11, 61, 36, 0.88) 0%,
+        rgba(38, 166, 91, 0.5) 50%,
+        rgba(255, 255, 255, 0.92) 100%
     );
 }
 

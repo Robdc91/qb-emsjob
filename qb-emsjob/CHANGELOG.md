@@ -2,6 +2,13 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.4.5] - 2026-09-25
+
+### Changed
+- Duty menu backdrop is now an asymmetric dark-green -> green -> white sweep
+  (deep green on the left, brightening to white on the right) instead of the
+  symmetric green-white-green; container and accents unchanged.
+
 ## [1.4.4] - 2026-09-25
 
 ### Changed
