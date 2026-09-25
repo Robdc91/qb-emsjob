@@ -24,4 +24,6 @@ jobs:
 
       - name: Run test suite
         working-directory: qb-emsjob
+        # GITHUB_STEP_SUMMARY is a default env var on every step; the runner
+        # appends a markdown results table to it when present (no-op locally)
         run: lua tests/run_tests.lua

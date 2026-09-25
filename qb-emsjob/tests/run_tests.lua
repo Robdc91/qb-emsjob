@@ -1235,16 +1235,42 @@ print(string.rep('-', 60))
 
 for _, t in ipairs(tests) do
     local ok, err = pcall(t.fn)
+    t.ok, t.err = ok, tostring(err)
     if ok then
         print(('PASS  %s'):format(t.name))
     else
         failed = failed + 1
-        print(('FAIL  %s\n      %s'):format(t.name, tostring(err)))
+        print(('FAIL  %s\n      %s'):format(t.name, t.err))
     end
 end
 
 print(string.rep('-', 60))
 print(('%d passed, %d failed'):format(#tests - failed, failed))
+
+-- Render a results table on the GitHub Actions run summary page. In CI the
+-- GITHUB_STEP_SUMMARY env var holds a file to append markdown to; locally it
+-- is unset, so this is a no-op. (Parenthesised return truncates gsub's
+-- extra count value; no literal backticks here by design.)
+local summaryPath = os.getenv('GITHUB_STEP_SUMMARY')
+if summaryPath and summaryPath ~= '' then
+    local f = io.open(summaryPath, 'a')
+    if f then
+        local function md(s)
+            return (tostring(s):gsub('[%c]', ' '):gsub('|', '\\|'))
+        end
+        f:write(('## qb-emsjob test suite — %s\n\n'):format(_VERSION))
+        f:write('| Result | Test |\n|---|---|\n')
+        for _, t in ipairs(tests) do
+            if t.ok then
+                f:write(('| ✅ | %s |\n'):format(md(t.name)))
+            else
+                f:write(('| ❌ | %s — %s |\n'):format(md(t.name), md(t.err)))
+            end
+        end
+        f:write(('\n**%d passed, %d failed**\n'):format(#tests - failed, failed))
+        f:close()
+    end
+end
 
 if failed > 0 then
     os.exit(1)
