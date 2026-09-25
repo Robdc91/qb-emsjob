@@ -2,6 +2,15 @@
 
 Notable changes to qb-emsjob. Versions follow semantic versioning.
 
+## [1.4.4] - 2026-09-25
+
+### Changed
+- Duty menu rethemed from dark purple to a light green-white-green gradient:
+  green glowing edges on a white container, light panels, and dark-green
+  accents; status hues keep their meaning on the light background (green =
+  10-8, amber = 10-7, gray = 10-23, red = off duty). Dev harness chrome and
+  toasts follow the same palette.
+
 ## [1.4.3] - 2026-09-25
 
 ### Changed
