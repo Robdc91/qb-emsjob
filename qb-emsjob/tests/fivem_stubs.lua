@@ -100,13 +100,19 @@ end
 -- Globals: server code calls TriggerClientEvent / TriggerEvent directly.
 -- TriggerClientEvent records the send AND delivers it to any registered
 -- client handler: FiveM would network the event to that client, and here
--- everything runs in one process, so delivery is immediate.
+-- everything runs in one process, so delivery is immediate. Delivered
+-- handlers may block on a progress bar, so when the caller is not already
+-- inside a coroutine the handler runs in its own thread.
 function TriggerClientEvent(name, target, ...)
     record(name, target, ...)
     local list = M.handlers[name]
     if list then
         for _, fn in ipairs(list) do
-            fn(...)
+            if coroutine.isyieldable() then
+                fn(...)
+            else
+                M.runInThread(fn, ...)
+            end
         end
     end
 end
@@ -676,6 +682,10 @@ end
 
 function IsControlJustReleased(pad, control) return false end
 
+function IsControlJustPressed(pad, control) return false end
+
+function DisableControlAction(pad, control, disabled) end
+
 function IsControlPressed(pad, control)
     return M.holdE == true and control == 38
 end
@@ -754,8 +764,10 @@ function M.reset()
     M.warped = nil
     M.zones = {}
     M.removedZones = {}
-    M.entityTargets = {}
-    M.removedEntityTargets = {}
+    -- NOTE: entityTargets/removedEntityTargets intentionally survive reset:
+    -- client/revive.lua tracks attached peds in a module-local table that
+    -- also survives, and the two must stay in lockstep or the tracker will
+    -- skip re-attaching options it believes are still registered.
     M.holdE = false
     M.remoteStates = {}
     M.useFakeTime = false

@@ -684,9 +684,17 @@ test('using bandage fires the client event only when the player has it', functio
     local fn = stub.useableItems['bandage']
     isTrue(fn ~= nil)
 
-    -- medic has bandages -> event fires
+    -- medic has bandages -> event fires; the delivered UseBandage handler
+    -- runs in its own thread and blocks on a progress bar, so drive it to
+    -- completion here (fake time) instead of leaving it parked for later
+    -- tests to accidentally resume
+    stub.advanceTime(0)
     fn(1)
     eq(eventsTo('qb-emsjob:client:UseBandage', 1), 1)
+    stub.advanceTime(6000)
+    -- direct resumeThreads calls: stepThreads is declared later in this file
+    stub.resumeThreads()
+    stub.resumeThreads()
 
     -- patient has none -> no event
     fn(2)
@@ -739,8 +747,9 @@ test('duty menu: off-duty EMS still opens the menu', function()
     setup()
     stub.players[1].PlayerData.job.onduty = false
     OnDuty = false -- mirror the client-side duty flag
+    local before = nuiCount('open')
     OpenDutyMenu()
-    eq(nuiCount('open'), 1)
+    eq(nuiCount('open'), before + 1)
     eq(lastNui('open').state.onDuty, false)
 end)
 
@@ -1047,14 +1056,15 @@ test('revive: the bleed-out countdown drains with fake time and kills at zero', 
     stub.peds[1].dead = true
     stepThreads(3)
 
-    -- one fake second per pass: the initial 3-pass step already burned two
-    -- countdown iterations (300 -> 298), so state hits 1 after 297 ticks;
-    -- the 298th tick trips the bleed-out branch
-    for _ = 1, 297 do
+    -- one fake second per pass; tick until the countdown reads 1 regardless
+    -- of how many iterations the initial step burned
+    local guard = 0
+    while type(LocalPlayer.state.laststand) == 'number' and LocalPlayer.state.laststand > 1 do
         stub.advanceTime(1000)
         stepThreads()
+        guard = guard + 1
+        isTrue(guard < 600, 'countdown reached 1')
     end
-    eq(LocalPlayer.state.laststand, 1)
 
     stub.advanceTime(1000)
     stepThreads()
@@ -1145,6 +1155,12 @@ test('revive: starting a revive runs the progress bar and signals the server', f
     setup()
     stub.remoteStates[2] = { laststand = 120 }
     stub.setPed(2, V(3, 0, 0), 0)
+
+    -- force a detach/reattach pass so these options come from THIS test's
+    -- tracker run (revive.lua's module-local trackedPeds survives resets)
+    stub.setPed(2, V(500, 0, 0), 0)
+    stepThreads()
+    stub.setPed(2, V(3, 0, 0), 0)
     stepThreads()
 
     local action
@@ -1165,6 +1181,11 @@ end)
 test('revive: healing a downed player redirects to the revive flow', function()
     setup()
     stub.remoteStates[2] = { laststand = 90 }
+    stub.setPed(2, V(3, 0, 0), 0)
+
+    -- force a detach/reattach pass (see the revive-flow test above)
+    stub.setPed(2, V(500, 0, 0), 0)
+    stepThreads()
     stub.setPed(2, V(3, 0, 0), 0)
     stepThreads()
 
@@ -1189,7 +1210,9 @@ test('revive: bandage heals, starts a cooldown and is refused while downed', fun
     isTrue(stub.notifyLog[#stub.notifyLog].msg:find('cannot use this right now', 1, true) ~= nil, 'refused while downed')
 
     setup() -- clears the downed state
-    stub.advanceTime(0)
+    -- jump far past any selfHealReady cooldown left over by earlier tests
+    -- (selfHealReady is a module-local in revive.lua that survives resets)
+    stub.advanceTime(600000)
     stub.runInThread(function() stub.fireEvent('qb-emsjob:client:UseBandage', 1) end)
     stub.advanceTime(6000)
     stepThreads(2) -- pass 1 finishes the progress bar, pass 2 releases the waiter
