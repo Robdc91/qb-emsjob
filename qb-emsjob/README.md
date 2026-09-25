@@ -43,6 +43,7 @@ lua tests/run_tests.lua
 - **useable items** — registration only for existing shared items, event fires only when the player holds the item
 - **duty menu controller (client)** — NUI open/close gating, statebag persistence of status + call-sign, save validation (unknown statuses, illegal call-signs, uppercase/truncation), live roster pushes, duty-state sync and resource-stop cleanup (via the statebag + NUI stubs)
 - **garage controller (client)** — garage/helipad zone registration, ambulance & helicopter take-out (spawn, heading/plate/engine/fuel/livery, keys, warp), blocked-spawn refusal, store/delete validation (EMS vs civilian vs on-foot) and zone cleanup (via qb-target + vehicle stubs)
+- **revive / laststand controller (client)** — laststand entry (countdown replication, EMS alert, downed blip), fake-time bleed-out drain to full death, revive via `NetworkResurrectLocalPlayer`, hold-E hospital respawn + respawn billing, hold cancel, dynamic target options on nearby downed players, revive/heal progress-bar flows through to server events, and bandage self-heal with cooldown (coroutine threads + controllable clock)
 
 Tests exit non-zero on failure, so they drop straight into CI.
 
