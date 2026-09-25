@@ -31,10 +31,10 @@
     defaultDuty = true,
     offDutyPay = false,
     grades = {
-        [0] = { name = 'recruit',   payment = 500 },
-        [1] = { name = 'paramedic', payment = 750 },
-        [2] = { name = 'senior',    payment = 1000 },
-        [3] = { name = 'chief',     payment = 1500, isboss = true, bankAuth = true },
+        [0] = { name = 'recruit',   payment = 50 },
+        [1] = { name = 'paramedic', payment = 75 },
+        [2] = { name = 'senior',    payment = 100 },
+        [3] = { name = 'chief',     payment = 150, isboss = true, bankAuth = true },
     },
 },
 ]]

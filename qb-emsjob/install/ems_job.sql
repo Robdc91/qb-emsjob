@@ -8,10 +8,10 @@ ON DUPLICATE KEY UPDATE `label` = VALUES(`label`);
 
 INSERT INTO `job_grades` (`job_name`, `grade`, `name`, `label`, `salary`, `is_boss`)
 VALUES
-    ('ambulance', 0, 'recruit',  'Recruited Paramedic', 500,  0),
-    ('ambulance', 1, 'paramedic','Paramedic',           750,  0),
-    ('ambulance', 2, 'senior',   'Senior Paramedic',    1000, 0),
-    ('ambulance', 3, 'chief',    'EMS Chief',           1500, 1)
+    ('ambulance', 0, 'recruit',  'Recruited Paramedic', 50,  0),
+    ('ambulance', 1, 'paramedic','Paramedic',           75,  0),
+    ('ambulance', 2, 'senior',   'Senior Paramedic',    100, 0),
+    ('ambulance', 3, 'chief',    'EMS Chief',           150, 1)
 ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `salary` = VALUES(`salary`), `is_boss` = VALUES(`is_boss`);
 
 -- Assign a player to the job (replace the citizenid):

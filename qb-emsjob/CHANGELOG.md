@@ -10,6 +10,9 @@ Notable changes to qb-emsjob. Versions follow semantic versioning.
   (`--green` / `--green-bright`), so at-a-glance status reads green = available,
   amber = busy, red = out of service, gray = out of service chip in the roster,
   and the dim red chip means off duty.
+- Default EMS salary ladder in both install recipes lowered to 50 / 75 / 100 /
+  150 per paycheck (recruit, paramedic, senior, chief); re-running
+  `install/ems_job.sql` updates existing rows via ON DUPLICATE KEY.
 
 ## [1.4.2] - 2026-09-25
 
